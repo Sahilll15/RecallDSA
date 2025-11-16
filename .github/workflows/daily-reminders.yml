@@ -1,0 +1,17 @@
+name: Daily Revision Reminders
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send reminder emails
+        run: |
+          curl -X POST "${{ secrets.APP_URL }}/api/cron/daily" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+
