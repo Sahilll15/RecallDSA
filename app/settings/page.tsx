@@ -3,7 +3,13 @@
 import { useEffect, useState } from 'react';
 import { Header } from '@/components/header';
 import { AnimatedBackground } from '@/components/ui/animated-background';
-import { AnimatedCard, AnimatedCardContent, AnimatedCardDescription, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card';
+import {
+  AnimatedCard,
+  AnimatedCardContent,
+  AnimatedCardDescription,
+  AnimatedCardHeader,
+  AnimatedCardTitle,
+} from '@/components/ui/animated-card';
 import {
   Card,
   CardContent,
@@ -110,7 +116,7 @@ export default function SettingsPage() {
   const webhookUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/api/github/webhook`
-      : 'https://your-app.vercel.app/api/github/webhook';
+      : 'https://recall-dsa.vercel.app/api/github/webhook';
 
   return (
     <div className="relative min-h-screen">
@@ -118,7 +124,7 @@ export default function SettingsPage() {
       <Header />
 
       <main className="container relative mx-auto px-4 py-8 max-w-4xl space-y-8">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
