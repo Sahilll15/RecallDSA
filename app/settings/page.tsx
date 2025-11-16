@@ -274,8 +274,8 @@ export default function SettingsPage() {
                     <li>Go to your repository on GitHub</li>
                     <li>Navigate to Settings → Webhooks → Add webhook</li>
                     <li>Copy and paste the values below</li>
-                    <li>Select "Just the push event"</li>
-                    <li>Click "Add webhook"</li>
+                    <li>Select &quot;Just the push event&quot;</li>
+                    <li>Click &quot;Add webhook&quot;</li>
                   </ol>
                 </AlertDescription>
               </Alert>

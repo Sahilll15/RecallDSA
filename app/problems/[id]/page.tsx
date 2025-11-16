@@ -114,7 +114,7 @@ export default function ProblemDetailPage() {
               </div>
               <p className="text-lg font-semibold mb-2">Problem not found</p>
               <p className="text-sm text-muted-foreground">
-                The problem you're looking for doesn't exist or has been removed
+                The problem you&apos;re looking for doesn&apos;t exist or has been removed
               </p>
             </CardContent>
           </Card>
