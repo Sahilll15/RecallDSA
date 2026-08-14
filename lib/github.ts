@@ -29,6 +29,7 @@ export class GitHubService {
     }
   }
 
+  /** Returns null when the tree cannot be read (bad token, missing repo/branch). */
   async getRepoTree(owner: string, repo: string, branch: string = "main") {
     try {
       const response = await this.octokit.git.getTree({
@@ -39,7 +40,8 @@ export class GitHubService {
       })
       return response.data.tree
     } catch (error) {
-      return []
+      console.error(`Failed to read tree for ${owner}/${repo}@${branch}:`, error)
+      return null
     }
   }
 
@@ -99,9 +101,50 @@ export function getLanguageFromExtension(filename: string): string | null {
   return ext ? langMap[ext] || ext : null
 }
 
+const PATTERN_KEYWORDS: Array<[string, string[]]> = [
+  ["binary-search-on-answer", ["binary-search-on-answer", "bs-on-answer", "search-on-answer"]],
+  ["binary-search", ["binary-search", "binarysearch", "binary_search"]],
+  ["two-pointers", ["two-pointer", "twopointer", "two_pointer"]],
+  ["sliding-window", ["sliding-window", "slidingwindow", "sliding_window"]],
+  ["prefix-sum", ["prefix-sum", "prefixsum", "prefix_sum"]],
+  ["monotonic-stack", ["monotonic-stack", "monotonicstack", "monotonic_stack"]],
+  ["linked-list", ["linked-list", "linkedlist", "linked_list"]],
+  ["dynamic-programming", ["dynamic-programming", "dp/", "/dp", "\\dp", "dynamicprogramming"]],
+  ["backtracking", ["backtracking", "backtrack"]],
+  ["topological-sort", ["topological", "toposort"]],
+  ["union-find", ["union-find", "unionfind", "disjoint-set", "dsu"]],
+  ["bit-manipulation", ["bit-manipulation", "bitmanip", "bitwise", "bit_manipulation"]],
+  ["intervals", ["interval"]],
+  ["recursion", ["recursion", "recursive"]],
+  ["hashing", ["hashing", "hashmap", "hash-map", "hash_map", "hashtable"]],
+  ["greedy", ["greedy"]],
+  ["sorting", ["sorting", "/sort", "\\sort"]],
+  ["heap", ["heap", "priority-queue", "priorityqueue", "priority_queue"]],
+  ["trie", ["trie"]],
+  ["bst", ["/bst", "\\bst", "binary-search-tree"]],
+  ["trees", ["tree"]],
+  ["graphs", ["graph"]],
+  ["bfs", ["/bfs", "\\bfs", "breadth-first"]],
+  ["dfs", ["/dfs", "\\dfs", "depth-first"]],
+  ["matrix", ["matrix", "/grid", "\\grid"]],
+  ["queue", ["queue"]],
+  ["stack", ["stack"]],
+  ["strings", ["string"]],
+  ["math", ["/math", "\\math"]],
+  ["arrays", ["array"]],
+]
+
+export function detectPattern(path: string): string | null {
+  const pathLower = path.toLowerCase()
+  for (const [pattern, keywords] of PATTERN_KEYWORDS) {
+    if (keywords.some((kw) => pathLower.includes(kw))) return pattern
+  }
+  return null
+}
+
 export function parseProblemInfo(path: string, filename: string) {
   const pathLower = path.toLowerCase()
-  
+
   let platform: string | null = null
   if (pathLower.includes("leetcode")) platform = "leetcode"
   else if (pathLower.includes("gfg") || pathLower.includes("geeksforgeeks")) platform = "gfg"
@@ -116,7 +159,9 @@ export function parseProblemInfo(path: string, filename: string) {
   else if (pathLower.includes("/hard/") || pathLower.includes("\\hard\\")) difficulty = "hard"
   
   const nameWithoutExt = filename.replace(/\.[^/.]+$/, "")
+  // LeetHub-style names lead with the problem number: "0001-two-sum" -> "Two Sum"
   const title = nameWithoutExt
+    .replace(/^\d+[-_.\s]+/, "")
     .replace(/[-_]/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .split(" ")
@@ -124,8 +169,9 @@ export function parseProblemInfo(path: string, filename: string) {
     .join(" ")
   
   const language = getLanguageFromExtension(filename)
-  
-  return { platform, difficulty, title, language }
+  const pattern = detectPattern(path)
+
+  return { platform, difficulty, title, language, pattern }
 }
 
 export function isCodeFile(filename: string): boolean {

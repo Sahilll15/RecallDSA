@@ -29,6 +29,43 @@ export const DIFFICULTIES = [
   { value: "hard", label: "Hard" },
 ]
 
-export const INITIAL_REVISION_INTERVAL_DAYS = 7
+export const PATTERNS = [
+  { value: "arrays", label: "Arrays" },
+  { value: "strings", label: "Strings" },
+  { value: "two-pointers", label: "Two Pointers" },
+  { value: "sliding-window", label: "Sliding Window" },
+  { value: "binary-search", label: "Binary Search" },
+  { value: "binary-search-on-answer", label: "Binary Search on Answer" },
+  { value: "prefix-sum", label: "Prefix Sum" },
+  { value: "hashing", label: "Hashing" },
+  { value: "stack", label: "Stack" },
+  { value: "monotonic-stack", label: "Monotonic Stack" },
+  { value: "queue", label: "Queue" },
+  { value: "linked-list", label: "Linked List" },
+  { value: "recursion", label: "Recursion" },
+  { value: "backtracking", label: "Backtracking" },
+  { value: "dynamic-programming", label: "Dynamic Programming" },
+  { value: "greedy", label: "Greedy" },
+  { value: "sorting", label: "Sorting" },
+  { value: "intervals", label: "Intervals" },
+  { value: "trees", label: "Trees" },
+  { value: "bst", label: "Binary Search Tree" },
+  { value: "heap", label: "Heap / Priority Queue" },
+  { value: "trie", label: "Trie" },
+  { value: "graphs", label: "Graphs" },
+  { value: "bfs", label: "BFS" },
+  { value: "dfs", label: "DFS" },
+  { value: "topological-sort", label: "Topological Sort" },
+  { value: "union-find", label: "Union-Find" },
+  { value: "bit-manipulation", label: "Bit Manipulation" },
+  { value: "math", label: "Math" },
+  { value: "matrix", label: "Matrix" },
+] as const
+
+export function patternLabel(value: string | null | undefined): string {
+  if (!value) return "Unclassified"
+  return PATTERNS.find((p) => p.value === value)?.label ?? value
+}
+
 export const PROBLEMS_PER_PAGE = 20
 

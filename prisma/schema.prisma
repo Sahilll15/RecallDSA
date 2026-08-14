@@ -87,18 +87,23 @@ model Problem {
   path       String
   platform   String?
   difficulty String?
+  pattern    String?
   title      String
   language   String?
   sha        String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  revisions Revision[]
+  revisions  Revision[]
+  recallNote RecallNote?
+  attempts   Attempt[]
+  mistakes   Mistake[]
 
   @@unique([repoId, path])
   @@index([repoId])
   @@index([platform])
   @@index([difficulty])
+  @@index([pattern])
 }
 
 model Revision {
@@ -111,7 +116,10 @@ model Revision {
 
   nextDate     DateTime
   lastRevised  DateTime?
-  intervalDays Int       @default(7)
+  intervalDays Int       @default(1)
+  easeFactor   Float     @default(2.5)
+  repetitions  Int       @default(0)
+  lapses       Int       @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -119,4 +127,49 @@ model Revision {
   @@index([userId])
   @@index([problemId])
   @@index([nextDate])
+}
+
+model RecallNote {
+  id        String  @id @default(cuid())
+  problemId String  @unique
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  keyIdea    String?  @db.Text
+  approach   String?  @db.Text
+  edgeCases  String?  @db.Text
+  complexity String?
+  hints      String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Attempt {
+  id        String  @id @default(cuid())
+  userId    String
+  problemId String
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  rating            String
+  patternRecognized Boolean?
+  hintsUsed         Int      @default(0)
+  durationSec       Int?
+  explanation       String?  @db.Text
+  createdAt         DateTime @default(now())
+
+  @@index([userId, problemId])
+  @@index([userId, createdAt])
+}
+
+model Mistake {
+  id        String  @id @default(cuid())
+  userId    String
+  problemId String
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  description String   @db.Text
+  concept     String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([problemId])
 }

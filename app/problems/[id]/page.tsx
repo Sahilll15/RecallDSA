@@ -9,8 +9,14 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CodeViewer } from '@/components/code-viewer'
+import { RatingButtons } from '@/components/rating-buttons'
+import { RecallNoteEditor, type RecallNoteData } from '@/components/recall-note-editor'
+import { MistakeLog, type MistakeData } from '@/components/mistake-log'
+import { AttemptHistory, type AttemptData } from '@/components/attempt-history'
 import { getDifficultyColor, getPlatformColor, formatRelativeDate } from '@/lib/utils'
-import { Calendar, CheckCircle, Plus, Trash2, Code2, Clock, TrendingUp, Sparkles, FileCode } from 'lucide-react'
+import { patternLabel } from '@/lib/constants'
+import type { RecallRating } from '@/lib/spaced-repetition'
+import { Calendar, Plus, Trash2, Code2, Clock, TrendingUp, Sparkles, FileCode, Brain, AlertTriangle, History } from 'lucide-react'
 import { Footer } from '@/components/footer'
 
 interface ProblemData {
@@ -18,6 +24,7 @@ interface ProblemData {
   title: string
   platform: string | null
   difficulty: string | null
+  pattern: string | null
   language: string | null
   path: string
   content: string
@@ -27,7 +34,13 @@ interface ProblemData {
     nextDate: string
     lastRevised: string | null
     intervalDays: number
+    easeFactor: number
+    repetitions: number
+    lapses: number
   }>
+  recallNote: RecallNoteData | null
+  mistakes: MistakeData[]
+  attempts: AttemptData[]
 }
 
 export default function ProblemDetailPage() {
@@ -62,11 +75,13 @@ export default function ProblemDetailPage() {
     setActionLoading(false)
   }
 
-  const markAsRevised = async () => {
+  const rateRecall = async (rating: RecallRating) => {
     if (!problem?.revisions[0]?.id) return
     setActionLoading(true)
     await fetch(`/api/revisions/${problem.revisions[0].id}/complete`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating }),
     })
     await fetchProblem()
     setActionLoading(false)
@@ -151,6 +166,12 @@ export default function ProblemDetailPage() {
                   {problem.difficulty}
                 </Badge>
               )}
+              {problem.pattern && (
+                <Badge>
+                  <Brain className="h-3 w-3 mr-1" />
+                  {patternLabel(problem.pattern)}
+                </Badge>
+              )}
               {problem.language && (
                 <Badge variant="outline">
                   <Code2 className="h-3 w-3 mr-1" />
@@ -171,8 +192,8 @@ export default function ProblemDetailPage() {
 
             <div className="flex flex-wrap gap-3">
               {!revision ? (
-                <Button 
-                  onClick={addToRevision} 
+                <Button
+                  onClick={addToRevision}
                   disabled={actionLoading}
                   size="lg"
                   className="group"
@@ -181,32 +202,21 @@ export default function ProblemDetailPage() {
                   Add to Revision Schedule
                 </Button>
               ) : (
-                <>
-                  <Button 
-                    onClick={markAsRevised} 
-                    disabled={actionLoading}
-                    size="lg"
-                    className="group"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-                    Mark as Revised
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={removeFromRevision}
-                    disabled={actionLoading}
-                    size="lg"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Remove from Revision
-                  </Button>
-                </>
+                <Button
+                  variant="outline"
+                  onClick={removeFromRevision}
+                  disabled={actionLoading}
+                  size="lg"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove from Revision
+                </Button>
               )}
             </div>
           </div>
 
           {revision && (
-            <Alert className="border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5">
+            <Alert className="border-primary/20 bg-primary/5">
               <Calendar className="h-4 w-4" />
               <AlertDescription>
                 <div className="grid sm:grid-cols-3 gap-6 mt-2">
@@ -242,6 +252,21 @@ export default function ProblemDetailPage() {
                     <p className="text-lg font-bold">{revision.intervalDays} days</p>
                   </div>
                 </div>
+
+                <div className="mt-6 space-y-2">
+                  <p className="text-sm font-semibold">Just revised it? Rate your recall:</p>
+                  <RatingButtons
+                    state={{
+                      intervalDays: revision.intervalDays,
+                      easeFactor: revision.easeFactor,
+                      repetitions: revision.repetitions,
+                      lapses: revision.lapses,
+                    }}
+                    onRate={rateRecall}
+                    disabled={actionLoading}
+                    className="max-w-md"
+                  />
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -250,7 +275,7 @@ export default function ProblemDetailPage() {
         <Card className="shadow-lg overflow-hidden">
           <CardHeader className="bg-muted/30">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-lg">
+              <div className="p-2 bg-primary/10 rounded-lg">
                 <Code2 className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -265,8 +290,78 @@ export default function ProblemDetailPage() {
             <CodeViewer code={problem.content} language={problem.language} />
           </CardContent>
         </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Brain className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Recall Note</CardTitle>
+                <CardDescription className="mt-1">
+                  The reasoning you want to be able to reconstruct: key idea, validation
+                  function, edge cases, and progressive hints for recall sessions
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RecallNoteEditor
+              key={`${problem.id}-${problem.recallNote?.hints.length ?? 'none'}`}
+              problemId={problem.id}
+              pattern={problem.pattern}
+              note={problem.recallNote}
+              onSaved={fetchProblem}
+            />
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-8 lg:grid-cols-2">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <CardTitle>Mistakes</CardTitle>
+                  <CardDescription className="mt-1">
+                    What tripped you up, as first-class data
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <MistakeLog
+                problemId={problem.id}
+                mistakes={problem.mistakes}
+                onChanged={fetchProblem}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg">
+                  <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <CardTitle>Attempt History</CardTitle>
+                  <CardDescription className="mt-1">
+                    Recall quality, hints used, and time per review
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <AttemptHistory attempts={problem.attempts} />
+            </CardContent>
+          </Card>
+        </div>
       </main>
-      
+
       <Footer />
     </div>
   )

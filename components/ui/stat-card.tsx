@@ -48,8 +48,8 @@ export function StatCard({
           </div>
           
           <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <h3 className={cn("text-3xl font-bold tracking-tight", valueColor || "text-foreground")}>
+            <p className="text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
+            <h3 className={cn("text-3xl font-bold tracking-tight tabular-nums", valueColor || "text-foreground")}>
               {value}
             </h3>
             {description && (
@@ -106,14 +106,14 @@ export function StatCard({
         </div>
         
         <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: delay + 0.1 }}
           >
             <h3 className={cn(
-              "text-3xl font-bold tracking-tight transition-colors duration-300",
+              "text-3xl font-bold tracking-tight tabular-nums transition-colors duration-300",
               valueColor || "text-foreground group-hover:text-primary"
             )}>
               {value}

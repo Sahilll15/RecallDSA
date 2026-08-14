@@ -38,7 +38,7 @@ export async function sendRevisionReminder(
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">DSA Trainer</h1>
+          <h1 style="color: white; margin: 0; font-size: 28px;">RecallDSA</h1>
           <p style="color: #e2e8f0; margin: 10px 0 0 0;">Your Daily Revision Reminder</p>
         </div>
         
@@ -61,14 +61,14 @@ export async function sendRevisionReminder(
         </div>
         
         <div style="text-align: center; margin-top: 20px; color: #94a3b8; font-size: 12px;">
-          <p>DSA Trainer - Your Personal Revision Assistant</p>
+          <p>RecallDSA - Your Personal Revision Assistant</p>
         </div>
       </body>
     </html>
   `
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || '"DSA Trainer" <no-reply@example.com>',
+    from: process.env.SMTP_FROM || '"RecallDSA" <no-reply@example.com>',
     to,
     subject: `🔔 ${problems.length} Problem${problems.length > 1 ? "s" : ""} Due for Revision`,
     html,

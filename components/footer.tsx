@@ -14,7 +14,7 @@ export function Footer() {
               <span className="font-medium text-foreground">Sahil Chalke</span>
             </p>
             <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} DSA Revisier
+              © {new Date().getFullYear()} RecallDSA
             </p>
           </div>
 

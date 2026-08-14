@@ -9,10 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { getDifficultyColor, getPlatformColor, formatDate } from '@/lib/utils'
+import { PATTERNS } from '@/lib/constants'
 import { Search, Filter, Code2, Clock, ChevronLeft, ChevronRight, Sparkles, ExternalLink, RefreshCw, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Footer } from '@/components/footer'
@@ -23,6 +24,7 @@ interface Problem {
   title: string
   platform: string | null
   difficulty: string | null
+  pattern: string | null
   language: string | null
   path: string
   updatedAt: string
@@ -37,19 +39,32 @@ export default function ProblemsPage() {
   const [syncResult, setSyncResult] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [platform, setPlatform] = useState("")
   const [difficulty, setDifficulty] = useState("")
   const [language, setLanguage] = useState("")
+  const [pattern, setPattern] = useState("")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // A filter change can strand `page` past the new result set, so jump back to 1.
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, platform, difficulty, language, pattern])
 
   const fetchProblems = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (search) params.append('search', search)
+    if (debouncedSearch) params.append('search', debouncedSearch)
     if (platform) params.append('platform', platform)
     if (difficulty) params.append('difficulty', difficulty)
     if (language) params.append('language', language)
+    if (pattern) params.append('pattern', pattern)
     params.append('page', page.toString())
 
     const response = await fetch(`/api/problems?${params}`)
@@ -57,7 +72,7 @@ export default function ProblemsPage() {
     setProblems(data.problems || [])
     setTotalPages(data.pages || 1)
     setLoading(false)
-  }, [search, platform, difficulty, language, page])
+  }, [debouncedSearch, platform, difficulty, language, pattern, page])
 
   const fetchRepos = async () => {
     try {
@@ -118,42 +133,29 @@ export default function ProblemsPage() {
       <Header />
       
       <main className="container relative mx-auto px-4 py-8 space-y-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-purple-500/10 to-blue-500/10 p-8 md:p-12 border border-primary/10"
+          transition={{ duration: 0.3 }}
+          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-border pb-6"
         >
-          <div className="absolute inset-0 bg-grid-white/10" />
-          <div className="relative">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <Badge>
-                <Code2 className="h-3 w-3 mr-2" />
-                Problems Library
-              </Badge>
-              {repos.length > 0 && (
-                <Button
-                  onClick={syncRepo}
-                  disabled={syncing}
-                  size="sm"
-                  variant="outline"
-                  className="bg-background/50 backdrop-blur-sm"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                  {syncing ? 'Syncing...' : 'Sync Problems'}
-                </Button>
-              )}
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-3">
-              Browse{' '}
-              <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                Problems
-              </span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              Explore and manage your DSA problem collection. Click on any row to preview code.
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight mb-1.5">Problems</h1>
+            <p className="text-muted-foreground">
+              Your synced library. Track a problem to put it on the recall schedule.
             </p>
           </div>
+          {repos.length > 0 && (
+            <Button
+              onClick={syncRepo}
+              disabled={syncing}
+              variant="outline"
+              className="shrink-0"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync from GitHub'}
+            </Button>
+          )}
         </motion.div>
 
         {syncResult && (
@@ -185,7 +187,7 @@ export default function ProblemsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
@@ -195,7 +197,16 @@ export default function ProblemsPage() {
                   className="pl-10"
                 />
               </div>
-              
+
+              <Select value={pattern} onChange={(e) => setPattern(e.target.value)}>
+                <option value="">All Patterns</option>
+                {PATTERNS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+
               <Select value={platform} onChange={(e) => setPlatform(e.target.value)}>
                 <option value="">All Platforms</option>
                 <option value="leetcode">LeetCode</option>

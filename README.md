@@ -15,12 +15,16 @@ RecallDSA connects to your GitHub, auto-imports your solved Data Structures & Al
 
 ## ✨ Features
 
-- 🔁 **Spaced-repetition engine** — schedules each problem for review at the optimal interval
-- 🔗 **GitHub sync** — auto-imports the problems you solve from a connected repository (via Octokit)
-- 📧 **Automated email reminders** — daily/weekly review nudges (Nodemailer)
-- 🔐 **GitHub OAuth** sign-in (NextAuth)
-- 📊 **Progress dashboard** — track what's due, what's mastered, and your streak
-- 🌗 **Responsive UI** with light/dark themes and smooth motion
+- 🧠 **Recall sessions** — staged active recall: name the pattern, reconstruct the approach, then reveal your stored reasoning and solution. Nothing is shown until you have tried.
+- 🔁 **True spaced repetition** — rate every recall Again / Hard / Good / Easy (SM-2 style: 1 → 3 → 7 day ladder, then ease-factor growth, reset on a lapse, 180-day cap)
+- 🎯 **Pattern recognition tracking** — recognizing "binary search on answer" is a different skill from coding it; both are measured separately
+- 📝 **Recall notes** — per problem: key idea, validation function, edge cases, complexity, and a progressive hint ladder revealed one nudge at a time
+- ⚠️ **Mistake log** — record what tripped you up with the underlying concept; recurring concepts surface on the dashboard
+- 📊 **Interview-readiness dashboard** — recall rate, pattern-recognition rate, hint-free rate, average recall time, pattern mastery, weak patterns
+- 🔗 **GitHub sync** — auto-imports solved problems from a connected repository; new pushes enter the review queue automatically (webhook + manual sync), deleted files are cleaned up
+- 📧 **Automated email reminders** — daily review nudges (Nodemailer + Vercel cron)
+- 🔐 **GitHub OAuth** sign-in (NextAuth v5)
+- 🌗 **Responsive UI** with light/dark themes
 
 ## 🛠️ Tech Stack
 
@@ -60,7 +64,13 @@ npx prisma migrate dev
 
 # 5. Run
 npm run dev          # http://localhost:3000
+
+# 6. Tests
+npm test
 ```
+
+> **Deploying:** the Vercel build only runs `prisma generate` — apply schema changes to the
+> production database with `npx prisma migrate deploy` before (or as part of) each deploy.
 
 ## 🤝 Contributing
 

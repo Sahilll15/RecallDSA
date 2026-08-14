@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { GitHubService, parseRepoFullName, parseProblemInfo, isCodeFile } from "@/lib/github"
+import { initialSchedulingState, nextDateFrom } from "@/lib/spaced-repetition"
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -29,28 +30,40 @@ export async function POST(request: NextRequest) {
     const github = new GitHubService(session.accessToken)
     
     const tree = await github.getRepoTree(owner, repoName, repo.defaultBranch)
-    
+
+    if (tree === null) {
+      return NextResponse.json(
+        { error: "Could not read the repository tree. Check the repo still exists and your GitHub access." },
+        { status: 502 }
+      )
+    }
+
     const codeFiles = tree.filter(
       (item) => item.type === "blob" && item.path && isCodeFile(item.path)
     )
 
+    const existingProblems = await prisma.problem.findMany({
+      where: { repoId: repo.id },
+      select: { id: true, path: true, sha: true },
+    })
+    const existingByPath = new Map(existingProblems.map((p) => [p.path, p]))
+    const treePaths = new Set(codeFiles.map((f) => f.path!))
+
+    // First import of a repo would flood the queue with hundreds of due
+    // revisions, so only files added on later syncs get auto-scheduled.
+    const autoSchedule = existingProblems.length > 0
+
     let added = 0
     let updated = 0
+    let scheduled = 0
 
     for (const file of codeFiles) {
       if (!file.path || !file.sha) continue
 
       const filename = file.path.split("/").pop()!
-      const { platform, difficulty, title, language } = parseProblemInfo(file.path, filename)
+      const { platform, difficulty, title, language, pattern } = parseProblemInfo(file.path, filename)
 
-      const existing = await prisma.problem.findUnique({
-        where: {
-          repoId_path: {
-            repoId: repo.id,
-            path: file.path,
-          },
-        },
-      })
+      const existing = existingByPath.get(file.path)
 
       if (existing) {
         if (existing.sha !== file.sha) {
@@ -62,12 +75,14 @@ export async function POST(request: NextRequest) {
               platform,
               difficulty,
               language,
+              pattern,
               updatedAt: new Date(),
             },
           })
           updated++
         }
       } else {
+        const fresh = initialSchedulingState()
         await prisma.problem.create({
           data: {
             repoId: repo.id,
@@ -77,13 +92,34 @@ export async function POST(request: NextRequest) {
             platform,
             difficulty,
             language,
+            pattern,
+            ...(autoSchedule
+              ? {
+                  revisions: {
+                    create: {
+                      userId: session.user.id,
+                      nextDate: nextDateFrom(fresh.intervalDays),
+                      intervalDays: fresh.intervalDays,
+                    },
+                  },
+                }
+              : {}),
           },
         })
         added++
+        if (autoSchedule) scheduled++
       }
     }
 
-    return NextResponse.json({ added, updated, total: codeFiles.length })
+    const stalePaths = existingProblems
+      .filter((p) => !treePaths.has(p.path))
+      .map((p) => p.path)
+
+    const { count: removed } = await prisma.problem.deleteMany({
+      where: { repoId: repo.id, path: { in: stalePaths } },
+    })
+
+    return NextResponse.json({ added, updated, removed, scheduled, total: codeFiles.length })
   } catch (error) {
     console.error("Failed to sync repo:", error)
     return NextResponse.json({ error: "Failed to sync repository" }, { status: 500 })

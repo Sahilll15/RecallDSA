@@ -6,13 +6,11 @@ import { cn } from "@/lib/utils"
 
 interface GradientTextProps extends React.HTMLAttributes<HTMLElement> {
   as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'span';
-  gradient?: string;
   animate?: boolean;
 }
 
 export function GradientText({
   as: Component = 'span',
-  gradient = "from-primary via-purple-500 to-pink-500",
   animate = false,
   className,
   children,
@@ -24,13 +22,11 @@ export function GradientText({
     setMounted(true)
   }, [])
 
+  // Solid ink, not bg-clip-text: gradient headings read as template filler
+  // and break in forced-colors / high-contrast modes.
   const content = (
     <Component
-      className={cn(
-        "bg-gradient-to-r bg-clip-text text-transparent font-bold",
-        gradient,
-        className
-      )}
+      className={cn("text-foreground font-bold tracking-tight", className)}
       {...props}
     >
       {children}

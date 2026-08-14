@@ -1,17 +1,26 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
-const inter = Inter({ 
+// Font variables must live on <html>: Tailwind's preflight sets font-family there,
+// and an undefined var() invalidates the whole declaration (serif fallback bug).
+const sans = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-geist-sans",
   display: "swap",
 })
 
+const mono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-geist-mono",
+  display: "swap",
+})
+
 export const metadata: Metadata = {
-  title: "DSA Revisier - Master Your DSA Skills",
-  description: "Track your DSA progress, schedule spaced revisions, and stay on top of your coding journey with intelligent revision tracking",
+  title: "RecallDSA - Reconstruct, don't just remember",
+  description: "Syncs solved DSA problems from GitHub and trains you to reconstruct them: pattern recognition, active recall sessions, and true spaced repetition",
 }
 
 export default function RootLayout({
@@ -20,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.variable}>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+      <body className="font-sans">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -34,4 +43,3 @@ export default function RootLayout({
     </html>
   )
 }
-

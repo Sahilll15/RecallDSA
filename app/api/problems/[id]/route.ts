@@ -22,6 +22,16 @@ export async function GET(
         revisions: {
           where: { userId: session.user.id },
         },
+        recallNote: true,
+        mistakes: {
+          where: { userId: session.user.id },
+          orderBy: { createdAt: 'desc' },
+        },
+        attempts: {
+          where: { userId: session.user.id },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
       },
     });
 

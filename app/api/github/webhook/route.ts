@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseProblemInfo, isCodeFile } from '@/lib/github';
+import { initialSchedulingState, nextDateFrom } from '@/lib/spaced-repetition';
 import crypto from 'crypto';
 
 function verifySignature(
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
     if (payload.commits && Array.isArray(payload.commits)) {
       const allFiles = new Set<string>();
       const addedFiles = new Set<string>();
+      const removedFiles = new Set<string>();
 
       for (const commit of payload.commits) {
         if (commit.added) {
@@ -65,16 +67,20 @@ export async function POST(request: NextRequest) {
         }
         if (commit.modified)
           commit.modified.forEach((f: string) => allFiles.add(f));
+        if (commit.removed)
+          commit.removed.forEach((f: string) => {
+            allFiles.delete(f);
+            addedFiles.delete(f);
+            removedFiles.add(f);
+          });
       }
 
       for (const filePath of allFiles) {
         if (!isCodeFile(filePath)) continue;
 
         const filename = filePath.split('/').pop()!;
-        const { platform, difficulty, title, language } = parseProblemInfo(
-          filePath,
-          filename,
-        );
+        const { platform, difficulty, title, language, pattern } =
+          parseProblemInfo(filePath, filename);
 
         const problem = await prisma.problem.upsert({
           where: {
@@ -88,6 +94,7 @@ export async function POST(request: NextRequest) {
             platform,
             difficulty,
             language,
+            pattern,
             sha: payload.after || '',
             updatedAt: new Date(),
           },
@@ -99,12 +106,12 @@ export async function POST(request: NextRequest) {
             platform,
             difficulty,
             language,
+            pattern,
           },
         });
 
         if (addedFiles.has(filePath)) {
-          const sevenDaysFromNow = new Date();
-          sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+          const fresh = initialSchedulingState();
 
           await prisma.revision.upsert({
             where: {
@@ -117,11 +124,17 @@ export async function POST(request: NextRequest) {
             create: {
               userId: repo.userId,
               problemId: problem.id,
-              nextDate: sevenDaysFromNow,
-              intervalDays: 7,
+              nextDate: nextDateFrom(fresh.intervalDays),
+              intervalDays: fresh.intervalDays,
             },
           });
         }
+      }
+
+      if (removedFiles.size > 0) {
+        await prisma.problem.deleteMany({
+          where: { repoId: repo.id, path: { in: [...removedFiles] } },
+        });
       }
     }
 

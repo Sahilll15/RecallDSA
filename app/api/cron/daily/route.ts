@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     let emailsSent = 0
 
-    for (const [userId, revisions] of userRevisionsMap) {
+    for (const revisions of userRevisionsMap.values()) {
       const user = revisions[0].user
       
       if (!user.email) continue
@@ -68,12 +68,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Vercel cron invokes with GET and an `Authorization: Bearer CRON_SECRET` header;
+// the old query-param-only check made every scheduled run 401.
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const secret = searchParams.get("secret")
+  const secret = request.nextUrl.searchParams.get("secret")
+  const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
-  
-  if (!cronSecret || secret !== cronSecret) {
+
+  const authorized =
+    !!cronSecret && (authHeader === `Bearer ${cronSecret}` || secret === cronSecret)
+
+  if (!authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

@@ -14,3 +14,4 @@ build
 .vercel
 .turbo
 
+tsconfig.tsbuildinfo

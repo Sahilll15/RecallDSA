@@ -31,12 +31,14 @@ export function Header({
         <div className="flex items-center gap-6">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 font-semibold text-base transition-colors hover:text-foreground"
+            className="flex items-center gap-2 transition-colors hover:text-foreground"
           >
-            <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary/10">
+            <div className="flex items-center justify-center w-7 h-7 rounded-md border border-primary/30 bg-primary/10">
               <Code2 className="h-4 w-4 text-primary" />
             </div>
-            <span className="text-foreground">DSA Revisier</span>
+            <span className="font-mono font-semibold text-base text-foreground tracking-tight">
+              recalldsa<span className="text-primary cursor-blink">_</span>
+            </span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -57,34 +59,34 @@ export function Header({
           </nav>
         </div>
 
+        {/* The header only renders on middleware-protected pages, so the controls
+            must not depend on a `user` prop most pages never pass. */}
         <div className="flex items-center gap-2">
           {user && (
-            <>
-              <span className="hidden sm:inline-block text-xs text-muted-foreground px-2.5 py-1 bg-muted/50 rounded-md">
-                {user.name || user.email}
-              </span>
-              <ThemeToggle />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => signOut({ callbackUrl: '/' })}
-                className="hidden md:flex"
-              >
-                <LogOut className="h-3.5 w-3.5 mr-1.5" />
-                Sign Out
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden"
-              >
-                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </Button>
-            </>
+            <span className="hidden sm:inline-block text-xs text-muted-foreground px-2.5 py-1 bg-muted/50 rounded-md">
+              {user.name || user.email}
+            </span>
           )}
+          <ThemeToggle />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => signOut({ callbackUrl: '/' })}
+            className="hidden md:flex"
+          >
+            <LogOut className="h-3.5 w-3.5 mr-1.5" />
+            Sign Out
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden"
+          >
+            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 

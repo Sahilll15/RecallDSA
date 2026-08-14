@@ -26,47 +26,47 @@ import { Footer } from '@/components/footer';
 import { motion } from 'framer-motion';
 
 const heroStats = [
-  { value: '4.2K+', label: 'Problems indexed', icon: Code2 },
-  { value: '92%', label: 'Revision adherence', icon: CalendarCheck2 },
-  { value: '7 days', label: 'Adaptive baseline', icon: Timer },
+  { value: '1-3-7d', label: 'Adaptive recall ladder', icon: Timer },
+  { value: '4 levels', label: 'Recall ratings, Anki-style', icon: CalendarCheck2 },
+  { value: '30+', label: 'DSA patterns tracked', icon: Code2 },
 ];
 
 const featureHighlights = [
   {
     icon: Sparkles,
-    title: 'Adaptive spaced repetition',
+    title: 'Recall sessions, not rereading',
     description:
-      'Intervals expand intelligently with every successful revision so you only practice when it matters.',
+      'Name the pattern, reconstruct the approach, then reveal your solution. The answer stays hidden until you have tried.',
   },
   {
-    icon: ShieldCheck,
-    title: 'Webhook native syncing',
+    icon: Target,
+    title: 'True spaced repetition',
     description:
-      'Every push to your DSA repo syncs instantly via secure GitHub webhooks with signature verification.',
+      'Rate every recall Again, Hard, Good, or Easy. Intervals follow a 1-3-7 day ladder, then grow or reset with your memory.',
   },
   {
     icon: BarChart3,
-    title: 'Operational analytics',
+    title: 'Pattern mastery tracking',
     description:
-      'Drill into platform mix, language coverage, velocity, and streaks directly inside the dashboard.',
+      'Recognizing binary-search-on-answer is a different skill from coding it. Both are measured separately.',
   },
   {
     icon: Workflow,
-    title: 'Zero-maintenance ingestion',
+    title: 'GitHub-native ingestion',
     description:
-      'Generic parsing handles any folder strategy, surfaces metadata, and deduplicates files automatically.',
+      'Push a solution and it enters your review queue automatically, with pattern, platform, and difficulty parsed from the path.',
   },
   {
     icon: Users,
-    title: 'Multi-tenant by design',
+    title: 'Mistakes as first-class data',
     description:
-      'Every GitHub account gets a private workspace with encrypted tokens and isolated data boundaries.',
+      'Log what tripped you up per problem. Recurring concepts surface on your dashboard as the thing to revise next.',
   },
   {
     icon: Zap,
-    title: 'Lightning fast UX',
+    title: 'Progressive hints',
     description:
-      'Server components, streaming routes, and optimistic mutations keep every interaction under 100ms.',
+      'Store your own hint ladder per problem. Recall sessions reveal one nudge at a time and count what you needed.',
   },
 ];
 
@@ -86,21 +86,32 @@ const workflowSteps = [
     icon: TrendingUp,
   },
   {
-    title: 'Schedule & revise',
+    title: 'Recall & rate',
     detail:
-      'Add any solution to your queue, receive reminders, and double the interval with one tap.',
+      'Work the due queue in recall sessions, rate your memory honestly, and let the schedule adapt.',
     metric: 'Never forget',
     icon: Target,
   },
 ];
 
-export function HomeClient() {
+export function HomeClient({ authError }: { authError?: string | null }) {
   return (
     <div className="relative min-h-screen">
       <AnimatedBackground />
-      
+
       <section className="relative">
         <div className="container relative mx-auto max-w-7xl px-4 py-16 lg:py-24">
+          {authError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              role="alert"
+            >
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              {authError}
+            </motion.div>
+          )}
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="space-y-6">
               <motion.div
@@ -384,7 +395,7 @@ Revision interval: 14 days`}
 
       <section className="py-16 lg:py-24 relative">
         <div className="container mx-auto max-w-4xl px-4">
-          <AnimatedCard delay={0.2} className="border-primary/30 bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent">
+          <AnimatedCard delay={0.2} className="border-primary/30 bg-primary/5">
             <AnimatedCardContent className="p-8 md:p-12 text-center">
               <motion.div
                 initial={{ scale: 0 }}

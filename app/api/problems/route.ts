@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const platform = searchParams.get("platform") || ""
     const difficulty = searchParams.get("difficulty") || ""
     const language = searchParams.get("language") || ""
+    const pattern = searchParams.get("pattern") || ""
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "20")
 
@@ -43,6 +44,10 @@ export async function GET(request: NextRequest) {
 
     if (language) {
       where.language = language
+    }
+
+    if (pattern) {
+      where.pattern = pattern
     }
 
     const [problems, total] = await Promise.all([

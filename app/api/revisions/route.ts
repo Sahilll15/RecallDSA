@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { initialSchedulingState, nextDateFrom } from "@/lib/spaced-repetition"
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -19,22 +20,16 @@ export async function GET(request: NextRequest) {
 
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000)
     const weekFromNow = new Date(today)
-    weekFromNow.setDate(weekFromNow.getDate() + 7)
+    weekFromNow.setDate(weekFromNow.getDate() + 8)
 
-    if (filter === "today") {
-      where.nextDate = {
-        lte: new Date(today.getTime() + 24 * 60 * 60 * 1000),
-      }
+    if (filter === "due" || filter === "today") {
+      where.nextDate = { lt: endOfToday }
     } else if (filter === "week") {
-      where.nextDate = {
-        gte: today,
-        lte: weekFromNow,
-      }
+      where.nextDate = { gte: endOfToday, lt: weekFromNow }
     } else if (filter === "overdue") {
-      where.nextDate = {
-        lt: today,
-      }
+      where.nextDate = { lt: today }
     }
 
     const revisions = await prisma.revision.findMany({
@@ -47,6 +42,7 @@ export async function GET(request: NextRequest) {
                 fullName: true,
               },
             },
+            recallNote: true,
           },
         },
       },
@@ -83,8 +79,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Problem not found" }, { status: 404 })
     }
 
-    const nextDate = new Date()
-    nextDate.setDate(nextDate.getDate() + 7)
+    const fresh = initialSchedulingState()
+    const nextDate = nextDateFrom(fresh.intervalDays)
 
     const revision = await prisma.revision.upsert({
       where: {
@@ -95,13 +91,15 @@ export async function POST(request: NextRequest) {
       },
       update: {
         nextDate,
-        intervalDays: 7,
+        intervalDays: fresh.intervalDays,
+        easeFactor: fresh.easeFactor,
+        repetitions: fresh.repetitions,
       },
       create: {
         userId: session.user.id,
         problemId,
         nextDate,
-        intervalDays: 7,
+        intervalDays: fresh.intervalDays,
       },
     })
 

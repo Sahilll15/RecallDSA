@@ -28,7 +28,7 @@ import {
   AlertCircle,
   CheckCircle,
   Copy,
-  Settings as SettingsIcon,
+
   Zap,
   Link as LinkIcon,
   Sparkles,
@@ -54,6 +54,7 @@ export default function SettingsPage() {
   const [connecting, setConnecting] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [syncResult, setSyncResult] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -82,30 +83,48 @@ export default function SettingsPage() {
   const connectRepo = async () => {
     if (!selectedRepo) return;
     setConnecting(true);
-    const response = await fetch('/api/repos/connect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName: selectedRepo }),
-    });
-    const newRepo = await response.json();
-    await syncRepo(newRepo.id);
-    await fetchData();
-    setConnecting(false);
-    setSelectedRepo('');
+    setErrorMessage(null);
+    try {
+      const response = await fetch('/api/repos/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: selectedRepo }),
+      });
+      const newRepo = await response.json();
+      if (!response.ok) {
+        throw new Error(newRepo?.error || 'Failed to connect the repository');
+      }
+      await syncRepo(newRepo.id);
+      await fetchData();
+      setSelectedRepo('');
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : 'Failed to connect the repository');
+    } finally {
+      setConnecting(false);
+    }
   };
 
   const syncRepo = async (repoId: string) => {
     setSyncing(true);
     setSyncResult(null);
-    const response = await fetch('/api/repos/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repoId }),
-    });
-    const result = await response.json();
-    setSyncResult(result);
-    await fetchData();
-    setSyncing(false);
+    setErrorMessage(null);
+    try {
+      const response = await fetch('/api/repos/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || 'Sync failed');
+      }
+      setSyncResult(result);
+      await fetchData();
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -125,32 +144,21 @@ export default function SettingsPage() {
 
       <main className="container relative mx-auto px-4 py-8 max-w-4xl space-y-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-purple-500/10 to-blue-500/10 p-8 md:p-12 border border-primary/10"
+          transition={{ duration: 0.3 }}
+          className="border-b border-border pb-6"
         >
-          <div className="absolute inset-0 bg-grid-white/10" />
-          <div className="relative">
-            <Badge className="mb-4">
-              <SettingsIcon className="h-3 w-3 mr-2" />
-              Configuration
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-bold mb-3">
-              <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                Settings
-              </span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              Manage your repository connections and sync preferences
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold tracking-tight mb-1.5">Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your repository connection and webhook sync
+          </p>
         </motion.div>
 
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-xl">
+              <div className="p-3 bg-primary/10 rounded-xl">
                 <Github className="h-6 w-6 text-primary" />
               </div>
               <div>
@@ -162,13 +170,20 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            {errorMessage && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Something went wrong</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
             {loading ? (
               <div className="space-y-4">
                 <Skeleton className="h-24 w-full rounded-xl" />
               </div>
             ) : connectedRepo ? (
               <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5 p-6">
+                <div className="relative overflow-hidden rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -210,11 +225,14 @@ export default function SettingsPage() {
                     <CheckCircle className="h-4 w-4" />
                     <AlertTitle>Sync completed successfully!</AlertTitle>
                     <AlertDescription>
-                      Added {syncResult.added} new problems, updated{' '}
-                      {syncResult.updated}
+                      Added {syncResult.added} new problems, updated {syncResult.updated}
+                      {typeof syncResult.removed === 'number' && syncResult.removed > 0
+                        ? `, removed ${syncResult.removed} deleted from the repo`
+                        : ''}
                     </AlertDescription>
                   </Alert>
                 )}
+
               </div>
             ) : (
               <div className="space-y-6">

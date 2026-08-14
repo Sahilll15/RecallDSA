@@ -16,8 +16,9 @@ export function formatDate(date: Date | string): string {
 export function formatRelativeDate(date: Date | string): string {
   const now = new Date()
   const target = new Date(date)
-  const diffMs = target.getTime() - now.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  // Calendar-day diff: 2 hours ago is "Today", not "Yesterday".
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const diffDays = Math.round((startOfDay(target) - startOfDay(now)) / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) return "Today"
   if (diffDays === 1) return "Tomorrow"
