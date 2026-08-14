@@ -17,6 +17,7 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  History,
   Sparkles,
   Target,
   TrendingUp,
@@ -44,17 +45,51 @@ interface Revision {
 
 type Filter = "due" | "upcoming" | "all"
 
+interface BackfillResult {
+  scheduled: number
+  skipped: number
+  duplicatesCollapsed: number
+  days: number
+  problems: Array<{ id: string; title: string; pattern: string | null; solvedAt: string }>
+}
+
 export default function RevisionPage() {
   const [allRevisions, setAllRevisions] = useState<Revision[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>("due")
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfill, setBackfill] = useState<BackfillResult | null>(null)
+  const [backfillError, setBackfillError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadRevisions = () =>
     fetch("/api/revisions")
       .then((r) => r.json())
       .then((data) => setAllRevisions(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false))
+
+  useEffect(() => {
+    loadRevisions().finally(() => setLoading(false))
   }, [])
+
+  const runBackfill = async () => {
+    setBackfilling(true)
+    setBackfill(null)
+    setBackfillError(null)
+    try {
+      const res = await fetch("/api/repos/backfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days: 7 }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Backfill failed")
+      setBackfill(data)
+      await loadRevisions()
+    } catch (e) {
+      setBackfillError(e instanceof Error ? e.message : "Backfill failed")
+    } finally {
+      setBackfilling(false)
+    }
+  }
 
   const now = new Date()
   const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
@@ -122,16 +157,75 @@ export default function RevisionPage() {
               Reconstruct the pattern, the approach, and the solution before you peek.
             </p>
           </div>
-          {due.length > 0 && (
-            <Link href="/revision/recall">
-              <Button size="lg" className="group whitespace-nowrap shrink-0">
-                <Brain className="mr-2 h-5 w-5" />
-                Start Recall Session ({due.length})
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-          )}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Button
+              variant="outline"
+              onClick={runBackfill}
+              disabled={backfilling}
+              className="whitespace-nowrap"
+            >
+              <History className={`mr-2 h-4 w-4 ${backfilling ? "animate-spin" : ""}`} />
+              {backfilling ? "Reading commits..." : "Add this week's solves"}
+            </Button>
+            {due.length > 0 && (
+              <Link href="/revision/recall">
+                <Button size="lg" className="group whitespace-nowrap">
+                  <Brain className="mr-2 h-5 w-5" />
+                  Start Recall Session ({due.length})
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            )}
+          </div>
         </motion.div>
+
+        {backfillError && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {backfillError}
+          </div>
+        )}
+
+        {backfill && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3"
+          >
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-semibold">
+                  {backfill.scheduled > 0
+                    ? `Added ${backfill.scheduled} problem${backfill.scheduled === 1 ? "" : "s"} from the last ${backfill.days} days`
+                    : `Nothing new from the last ${backfill.days} days`}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Each one is scheduled from when you solved it, so the oldest comes up first.
+                  {backfill.skipped > 0 && ` ${backfill.skipped} already tracked.`}
+                  {backfill.duplicatesCollapsed > 0 &&
+                    ` ${backfill.duplicatesCollapsed} duplicate file${backfill.duplicatesCollapsed === 1 ? "" : "s"} collapsed.`}
+                </p>
+              </div>
+            </div>
+            {backfill.problems.length > 0 && (
+              <ul className="space-y-1.5 pl-8">
+                {backfill.problems.map((p) => (
+                  <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-medium">{p.title}</span>
+                    {p.pattern && (
+                      <Badge variant="outline" className="text-xs">
+                        {patternLabel(p.pattern)}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground font-mono">
+                      solved {formatRelativeDate(p.solvedAt)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </motion.div>
+        )}
 
         <div className="grid gap-6 sm:grid-cols-3">
           {stats.map((stat) => {

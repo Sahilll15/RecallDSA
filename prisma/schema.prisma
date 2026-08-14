@@ -91,6 +91,7 @@ model Problem {
   title      String
   language   String?
   sha        String
+  solvedAt   DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -104,6 +105,7 @@ model Problem {
   @@index([platform])
   @@index([difficulty])
   @@index([pattern])
+  @@index([solvedAt])
 }
 
 model Revision {

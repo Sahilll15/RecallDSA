@@ -72,6 +72,51 @@ export class GitHubService {
     const response = await this.octokit.repos.get({ owner, repo })
     return response.data
   }
+
+  /**
+   * Earliest commit date per file path within the window: when the solution was
+   * actually written, which the sync's own timestamps cannot tell you.
+   */
+  async getSolveDates(
+    owner: string,
+    repo: string,
+    sinceDays: number,
+  ): Promise<Map<string, Date>> {
+    const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString()
+    const solvedAt = new Map<string, Date>()
+
+    try {
+      const commits = await this.octokit.paginate(this.octokit.repos.listCommits, {
+        owner,
+        repo,
+        since,
+        per_page: 100,
+      })
+
+      for (const commit of commits) {
+        const detail = await this.octokit.repos.getCommit({
+          owner,
+          repo,
+          ref: commit.sha,
+        })
+        const date = detail.data.commit.author?.date
+        if (!date) continue
+        const commitDate = new Date(date)
+
+        for (const file of detail.data.files ?? []) {
+          if (file.status === "removed" || !isCodeFile(file.filename)) continue
+          const existing = solvedAt.get(file.filename)
+          if (!existing || commitDate < existing) {
+            solvedAt.set(file.filename, commitDate)
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to read commit history for ${owner}/${repo}:`, error)
+    }
+
+    return solvedAt
+  }
 }
 
 export function parseRepoFullName(fullName: string): { owner: string; repo: string } {

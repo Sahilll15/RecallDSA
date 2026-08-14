@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { GitHubService, parseRepoFullName, parseProblemInfo, isCodeFile } from "@/lib/github"
 import { initialSchedulingState, nextDateFrom } from "@/lib/spaced-repetition"
+import { SOLVE_HISTORY_DAYS } from "@/lib/constants"
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -42,6 +43,8 @@ export async function POST(request: NextRequest) {
       (item) => item.type === "blob" && item.path && isCodeFile(item.path)
     )
 
+    const solveDates = await github.getSolveDates(owner, repoName, SOLVE_HISTORY_DAYS)
+
     const existingProblems = await prisma.problem.findMany({
       where: { repoId: repo.id },
       select: { id: true, path: true, sha: true },
@@ -64,6 +67,7 @@ export async function POST(request: NextRequest) {
       const { platform, difficulty, title, language, pattern } = parseProblemInfo(file.path, filename)
 
       const existing = existingByPath.get(file.path)
+      const solvedAt = solveDates.get(file.path) ?? null
 
       if (existing) {
         if (existing.sha !== file.sha) {
@@ -76,10 +80,16 @@ export async function POST(request: NextRequest) {
               difficulty,
               language,
               pattern,
+              ...(solvedAt ? { solvedAt } : {}),
               updatedAt: new Date(),
             },
           })
           updated++
+        } else if (solvedAt) {
+          await prisma.problem.update({
+            where: { id: existing.id },
+            data: { solvedAt },
+          })
         }
       } else {
         const fresh = initialSchedulingState()
@@ -93,6 +103,7 @@ export async function POST(request: NextRequest) {
             difficulty,
             language,
             pattern,
+            solvedAt,
             ...(autoSchedule
               ? {
                   revisions: {

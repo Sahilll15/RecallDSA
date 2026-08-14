@@ -80,7 +80,15 @@ Ease is clamped to a 1.3 floor so a problem you keep failing can't spiral, and i
 
 Due, upcoming, and mastered, split so the counts don't overlap and double-count. Overdue problems are marked, and lapses stay visible so a problem you keep failing can't hide behind a green streak.
 
-<img src="docs/screenshots/revision-queue.png" alt="Revision page showing Due Now, Upcoming, and Mastered counts with a list of due problems" width="100%">
+<img src="docs/screenshots/revision-queue.png" alt="Revision page showing Due Now, Upcoming, and Mastered counts with a list of overdue problems" width="100%">
+
+### Catching up on what you already solved
+
+**Add this week's solves** reads your repo's commit history and schedules everything you solved recently, anchored to *when you actually solved it* rather than when you clicked the button.
+
+That matters because a solve date is not a sync date. A problem you finished five days ago and never revisited is genuinely overdue; one you solved this morning shouldn't be in today's queue at all. The first review lands a day after the solve, so the queue naturally orders itself oldest-first, and today's work waits until tomorrow.
+
+It also collapses duplicates. LeetHub and LeetSync both commit the same solution under different folder namings (`0875-koko-eating-bananas/0875-koko-eating-bananas.cpp` and `875-koko-eating-bananas/koko-eating-bananas.cpp`, sometimes under different problem numbers), which would otherwise queue the same problem two or three times. Re-running is safe: already-tracked problems are skipped.
 
 ---
 
@@ -138,7 +146,8 @@ app/
   dashboard/      readiness metrics, computed server-side
 lib/
   spaced-repetition.ts   the SM-2 scheduler (pure, unit tested)
-  github.ts              tree walking, path parsing, pattern detection
+  solve-history.ts       solve-date scheduling and duplicate collapsing (unit tested)
+  github.ts              tree walking, path parsing, pattern detection, commit dates
   auth.ts                NextAuth config
 prisma/schema.prisma     User, Repo, Problem, Revision, RecallNote, Attempt, Mistake
 ```

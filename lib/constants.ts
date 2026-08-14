@@ -69,3 +69,7 @@ export function patternLabel(value: string | null | undefined): string {
 
 export const PROBLEMS_PER_PAGE = 20
 
+// How far back a sync reads commit history to date each solution.
+export const SOLVE_HISTORY_DAYS = 30
+export const BACKFILL_MAX_DAYS = 30
+
