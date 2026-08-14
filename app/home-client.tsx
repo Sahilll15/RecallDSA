@@ -198,9 +198,14 @@ export function HomeClient({ authError }: { authError?: string | null }) {
             >
               <AnimatedCard className="relative" delay={0.4}>
                 <AnimatedCardHeader>
-                  <AnimatedCardTitle>Live Activity</AnimatedCardTitle>
+                  <div className="flex items-center justify-between gap-3">
+                    <AnimatedCardTitle>Your dashboard, roughly</AnimatedCardTitle>
+                    <Badge variant="outline" className="shrink-0 font-mono text-2xs uppercase tracking-wider">
+                      Example
+                    </Badge>
+                  </div>
                   <AnimatedCardDescription>
-                    Real-time sync from your repository
+                    Sample data showing what a synced repo looks like
                   </AnimatedCardDescription>
                 </AnimatedCardHeader>
                 <AnimatedCardContent className="space-y-4">
@@ -215,12 +220,12 @@ export function HomeClient({ authError }: { authError?: string | null }) {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
                       </span>
-                      Webhook • 2s ago
+                      Webhook push
                     </div>
                     <pre className="text-xs leading-relaxed text-muted-foreground">
                       {`leetcode/medium/construct-binary-tree.py
 Platform: LeetCode | Difficulty: Medium
-Revision interval: 14 days`}
+Interval: 1d -> 3d -> 7d`}
                     </pre>
                   </motion.div>
 
