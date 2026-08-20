@@ -131,73 +131,154 @@ export function buildStreakReminderEmail({
   const recallUrl = `${appUrl}/revision/recall`;
   const extra = dueCount - problems.length;
 
+  // Email-safe difficulty colors: a fixed hex triple, not the app's CSS
+  // variables, since a mail client never loads the app's stylesheet.
+  const DIFFICULTY_COLOR: Record<string, string> = {
+    easy: '#25c178',
+    medium: '#f9af2f',
+    hard: '#e85454',
+  };
+
   const rows = problems
-    .map((p) => {
-      const meta = [p.pattern, p.difficulty]
-        .filter((v): v is string => typeof v === 'string' && v.length > 0)
-        .map(escapeHtml)
-        .join(' &middot; ');
+    .map((p, i) => {
+      const difficultyColor = p.difficulty ? DIFFICULTY_COLOR[p.difficulty.toLowerCase()] : null;
+      const isLast = i === problems.length - 1;
+
+      const DIFFICULTY_SOFT: Record<string, string> = {
+        easy: '#123022',
+        medium: '#362712',
+        hard: '#371515',
+      };
+      const softBg = p.difficulty ? DIFFICULTY_SOFT[p.difficulty.toLowerCase()] : null;
+
+      const tags = [
+        p.difficulty && difficultyColor && softBg
+          ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${softBg};color:${difficultyColor};font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">${escapeHtml(p.difficulty)}</span>`
+          : '',
+        p.pattern
+          ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;border:1px solid #23272f;color:#969eab;font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:11px;">${escapeHtml(p.pattern)}</span>`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('&nbsp;&nbsp;');
+
       const external = p.externalUrl
-        ? `<a href="${escapeHtml(p.externalUrl)}" style="color:#64748b;text-decoration:none;font-size:13px;">Read the question &rarr;</a>`
+        ? `<a href="${escapeHtml(p.externalUrl)}" style="color:#969eab;text-decoration:none;font-size:13px;">Read the question&nbsp;&rarr;</a>`
         : '';
 
       return `<tr>
-  <td style="padding:12px 0;border-bottom:1px solid #e2e8f0;">
-    <a href="${appUrl}/problems/${encodeURIComponent(p.id)}" style="color:#15803d;text-decoration:none;font-weight:600;font-size:15px;">${escapeHtml(p.title)}</a>
-    ${meta ? `<div style="color:#64748b;font-size:13px;margin-top:2px;">${meta}</div>` : ''}
-    ${external ? `<div style="margin-top:4px;">${external}</div>` : ''}
+  <td style="padding:14px 0;${isLast ? '' : 'border-bottom:1px solid #23272f;'}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="vertical-align:top;">
+          <a href="${appUrl}/problems/${encodeURIComponent(p.id)}" style="color:#f3f5f7;text-decoration:none;font-weight:600;font-size:15px;line-height:1.4;">${escapeHtml(p.title)}</a>
+          ${tags ? `<div style="margin-top:6px;">${tags}</div>` : ''}
+          ${external ? `<div style="margin-top:6px;">${external}</div>` : ''}
+        </td>
+      </tr>
+    </table>
   </td>
 </tr>`;
     })
     .join('');
 
+  const preheader = `${HEADLINE[urgency](streakDays)} — ${dueCount} due, ${streakDays}-day streak.`;
+
+  // Urgency reads as a status strip before any text is parsed, the way a CI
+  // run signals pass/fail before you read the log — familiar to the audience.
+  const URGENCY_COLOR: Record<ReminderUrgency, string> = {
+    nudge: '#25c178',
+    warning: '#f9af2f',
+    final: '#e85454',
+  };
+  const stripColor = URGENCY_COLOR[urgency];
+
   const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:24px 12px;background:#eff1f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #d7dbe3;border-radius:10px;overflow:hidden;">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<title>${escapeHtml(HEADLINE[urgency](streakDays))}</title>
+<!--[if mso]>
+<style>table,td,div,h1,p,a{font-family:Arial,sans-serif !important;}</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;background:#0a0c10;">
+  <!-- Preview text: shows next to the subject in the inbox list, hidden in the body. -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
+    ${escapeHtml(preheader)}
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0a0c10;">
     <tr>
-      <td style="padding:22px 26px;background:#0a0d12;">
-        <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;font-weight:600;color:#ffffff;">recalldsa<span style="color:#2fd07a;">_</span></span>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:26px;">
-        <div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#64748b;">Streak at risk</div>
-        <h1 style="margin:8px 0 0;font-size:21px;line-height:1.3;color:#0f172a;">${escapeHtml(HEADLINE[urgency](streakDays))}</h1>
-
-        <p style="font-size:15px;line-height:1.6;margin:14px 0 0;">Hi ${name}, ${escapeHtml(OPENING[urgency](streakDays))}</p>
-
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border:1px solid #d7dbe3;border-radius:8px;">
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#0e1015;border:1px solid #23272f;border-radius:10px;">
           <tr>
-            <td style="padding:14px 16px;text-align:center;border-right:1px solid #d7dbe3;">
-              <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Streak</div>
-              <div style="font-size:24px;font-weight:700;color:#15803d;">${streakDays}</div>
+            <td style="height:4px;line-height:4px;font-size:0;background:${stripColor};border-radius:10px 10px 0 0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding:18px 26px;background:#0a0c10;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:15px;font-weight:600;color:#ffffff;">recalldsa<span style="color:#2fd07a;">_</span></td>
+                  <td align="right" style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:${stripColor};">&#9679;&nbsp;${urgency}</td>
+                </tr>
+              </table>
             </td>
-            <td style="padding:14px 16px;text-align:center;">
-              <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;">Due now</div>
-              <div style="font-size:24px;font-weight:700;color:#b91c1c;">${dueCount}</div>
+          </tr>
+          <tr>
+            <td style="padding:28px 26px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f3f5f7;">
+
+              <p style="margin:0;font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#969eab;">Streak at risk</p>
+              <h1 style="margin:8px 0 0;font-size:21px;line-height:1.35;color:#f3f5f7;font-weight:700;">${escapeHtml(HEADLINE[urgency](streakDays))}</h1>
+              <p style="font-size:15px;line-height:1.6;margin:14px 0 0;color:#f3f5f7;">Hi ${name}, ${escapeHtml(OPENING[urgency](streakDays))}</p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0;border:1px solid #23272f;border-radius:8px;background:#15181e;">
+                <tr>
+                  <td width="50%" style="padding:16px;text-align:center;border-right:1px solid #23272f;">
+                    <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#969eab;">Streak</div>
+                    <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:26px;font-weight:700;color:#25c178;line-height:1.4;">${streakDays}<span style="font-size:13px;font-weight:500;color:#969eab;">&nbsp;${streakDays === 1 ? 'day' : 'days'}</span></div>
+                  </td>
+                  <td width="50%" style="padding:16px;text-align:center;">
+                    <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#969eab;">Due now</div>
+                    <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:26px;font-weight:700;color:#e85454;line-height:1.4;">${dueCount}</div>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 4px;font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#969eab;">Waiting for you</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+              ${extra > 0 ? `<p style="font-size:13px;color:#969eab;margin:12px 0 0;">and ${extra} more in the queue.</p>` : ''}
+
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px auto 6px;">
+                <tr>
+                  <td align="center" style="border-radius:8px;background:#25c178;">
+                    <a href="${recallUrl}" style="display:inline-block;padding:14px 30px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#0b0d14;text-decoration:none;border-radius:8px;">Start a recall session</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size:13px;line-height:1.6;color:#969eab;margin:24px 0 0;padding-top:18px;border-top:1px solid #23272f;">
+                Name the pattern first, reconstruct the approach, and only then look. That is the part that sticks.
+              </p>
             </td>
           </tr>
         </table>
 
-        <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Waiting for you</div>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
-        ${extra > 0 ? `<p style="font-size:13px;color:#64748b;margin:12px 0 0;">and ${extra} more in the queue.</p>` : ''}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+          <tr>
+            <td align="center" style="padding:16px 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#969eab;line-height:1.6;">
+              You are getting this because a streak on recalldsa is about to lapse.<br>
+              <a href="${appUrl}/settings" style="color:#969eab;">Reminder settings</a>
+            </td>
+          </tr>
+        </table>
 
-        <div style="text-align:center;margin:26px 0 6px;">
-          <a href="${recallUrl}" style="display:inline-block;background:#15803d;color:#ffffff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Start a recall session</a>
-        </div>
-
-        <p style="font-size:13px;line-height:1.6;color:#64748b;margin:22px 0 0;padding-top:16px;border-top:1px solid #e2e8f0;">
-          Name the pattern first, reconstruct the approach, and only then look. That is the part that sticks.
-        </p>
       </td>
     </tr>
   </table>
-  <p style="max-width:560px;margin:14px auto 0;text-align:center;font-size:12px;color:#94a3b8;">
-    <a href="${appUrl}/settings" style="color:#94a3b8;">Reminder settings</a>
-  </p>
 </body>
 </html>`;
 
