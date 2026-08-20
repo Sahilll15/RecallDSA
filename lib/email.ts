@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer"
 import type { ReminderEmail } from "./streak-reminder"
+import { resolveAppUrl } from "./app-url"
 
 /**
  * Without SMTP credentials every send throws, and a caller looping over users
@@ -24,7 +25,7 @@ export async function sendRevisionReminder(
   userName: string,
   problems: Array<{ title: string; id: string; difficulty?: string | null }>
 ) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  const appUrl = resolveAppUrl()
   
   const problemsList = problems
     .map(

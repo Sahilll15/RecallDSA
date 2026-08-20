@@ -6,6 +6,7 @@ import { dedupeRevisionQueue } from '@/lib/revision-queue';
 import { fetchLeetCodeProblem } from '@/lib/leetcode';
 import { leetCodeSlugFor } from '@/lib/pattern-detection';
 import { patternLabel } from '@/lib/constants';
+import { resolveAppUrl } from '@/lib/app-url';
 import { formatProblemTitle } from '@/lib/utils';
 import {
   assessStreakRisk,
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://recall-dsa.vercel.app';
+  const appUrl = resolveAppUrl();
   const dryRun = request.nextUrl.searchParams.get('dryRun') === '1';
 
   try {
