@@ -13,8 +13,13 @@ export const MAX_EASE = 3.0;
 export const MAX_INTERVAL_DAYS = 180;
 export const MASTERY_INTERVAL_DAYS = 30;
 
-// Intervals for the first "good" reviews after the initial 1-day review.
-const LADDER = [3, 7];
+/**
+ * Intervals for the first "good" reviews after the initial 1-day review.
+ * 1, 3, 7, 14, 30 is the schedule the spaced-repetition literature on
+ * interview prep converges on, and 30 days is also what this app calls mastery,
+ * so the ladder now walks all the way there before compounding by ease.
+ */
+const LADDER = [3, 7, 14, 30];
 
 export const RATING_LABELS: Record<RecallRating, string> = {
   again: 'Again',

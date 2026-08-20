@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Brain,
   CheckCircle2,
+  Crosshair,
   History,
   Layers,
   Loader2,
@@ -305,6 +306,12 @@ export default function RevisionPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <Link href="/revision/triggers">
+              <Button variant="outline">
+                <Crosshair className="h-4 w-4" />
+                Trigger drill
+              </Button>
+            </Link>
             <Button variant="outline" onClick={runBackfill} disabled={backfilling}>
               {backfilling ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -334,7 +341,7 @@ export default function RevisionPage() {
         {error && (
           <div
             role="alert"
-            className="mt-6 flex items-start gap-2.5 rounded-[var(--radius)] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            className="mt-6 flex items-start gap-2.5 rounded-[var(--radius)] border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive"
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
@@ -345,7 +352,7 @@ export default function RevisionPage() {
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 flex flex-col gap-3 rounded-[var(--radius)] border border-warning/30 bg-warning/[0.07] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+            className="mt-6 flex flex-col gap-3 rounded-[var(--radius)] border border-warning/30 bg-warning-soft px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-start gap-2.5">
               <Layers className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
@@ -377,7 +384,7 @@ export default function RevisionPage() {
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 flex flex-col gap-3 rounded-[var(--radius)] border border-info/30 bg-info/[0.07] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+            className="mt-6 flex flex-col gap-3 rounded-[var(--radius)] border border-info/30 bg-info-soft px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-start gap-2.5">
               <Tags className="mt-0.5 h-4 w-4 shrink-0 text-info" />
@@ -406,7 +413,7 @@ export default function RevisionPage() {
         )}
 
         {classified !== null && (
-          <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary/[0.07] px-4 py-3 text-sm">
+          <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary-soft px-4 py-3 text-sm">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
             <span>
               Classified <span data-numeric>{classified}</span> problem
@@ -416,7 +423,7 @@ export default function RevisionPage() {
         )}
 
         {cleaned !== null && (
-          <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary/[0.07] px-4 py-3 text-sm">
+          <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary-soft px-4 py-3 text-sm">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
             <span>
               Removed <span data-numeric>{cleaned}</span> duplicate{' '}
@@ -429,7 +436,7 @@ export default function RevisionPage() {
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 space-y-3 rounded-[var(--radius)] border border-primary/25 bg-primary/[0.05] p-4"
+            className="mt-6 space-y-3 rounded-[var(--radius)] border border-primary/25 bg-primary-soft p-4"
           >
             <div className="flex items-start gap-2.5">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />

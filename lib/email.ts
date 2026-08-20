@@ -1,4 +1,13 @@
 import nodemailer from "nodemailer"
+import type { ReminderEmail } from "./streak-reminder"
+
+/**
+ * Without SMTP credentials every send throws, and a caller looping over users
+ * would report a string of per-user failures instead of one clear cause.
+ */
+export function isEmailConfigured(): boolean {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+}
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -75,3 +84,18 @@ export async function sendRevisionReminder(
   })
 }
 
+
+/** Sends a prebuilt reminder. Composition lives in lib/streak-reminder.ts. */
+export async function sendStreakReminder(to: string, email: ReminderEmail) {
+  if (!isEmailConfigured()) {
+    throw new Error("SMTP is not configured: set SMTP_HOST, SMTP_USER and SMTP_PASS")
+  }
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || '"RecallDSA" <no-reply@recalldsa.app>',
+    to,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  })
+}

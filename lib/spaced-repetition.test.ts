@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FIRST_INTERVAL_DAYS,
+  MASTERY_INTERVAL_DAYS,
   MAX_INTERVAL_DAYS,
   MIN_EASE,
   initialSchedulingState,
@@ -13,18 +14,23 @@ import {
 const fresh = (): SchedulingState => initialSchedulingState();
 
 describe('scheduleNext', () => {
-  it('walks the 1 -> 3 -> 7 ladder on consecutive "good" ratings', () => {
+  it('walks the 1 -> 3 -> 7 -> 14 -> 30 ladder on consecutive "good" ratings', () => {
     let state = fresh();
-    state = scheduleNext(state, 'good');
-    expect(state.intervalDays).toBe(3);
-    state = scheduleNext(state, 'good');
-    expect(state.intervalDays).toBe(7);
+    for (const expected of [3, 7, 14, 30]) {
+      state = scheduleNext(state, 'good');
+      expect(state.intervalDays).toBe(expected);
+    }
   });
 
-  it('grows by the ease factor after the ladder', () => {
+  it('reaches the mastery interval by walking the ladder, not by compounding', () => {
     let state = fresh();
-    state = scheduleNext(state, 'good'); // 3
-    state = scheduleNext(state, 'good'); // 7
+    for (let i = 0; i < 4; i++) state = scheduleNext(state, 'good');
+    expect(state.intervalDays).toBe(MASTERY_INTERVAL_DAYS);
+  });
+
+  it('grows by the ease factor once the ladder runs out', () => {
+    let state = fresh();
+    for (let i = 0; i < 4; i++) state = scheduleNext(state, 'good');
     const before = state;
     state = scheduleNext(state, 'good');
     expect(state.intervalDays).toBe(Math.round(before.intervalDays * before.easeFactor));
