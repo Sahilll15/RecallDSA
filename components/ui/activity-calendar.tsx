@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import type { ActivityDay } from '@/lib/activity';
 
 const LEVEL_FILL = [
-  'bg-border-strong/35',
+  'bg-calendar-empty',
   'bg-primary/25',
   'bg-primary/45',
   'bg-primary/70',

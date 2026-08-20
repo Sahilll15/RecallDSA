@@ -69,7 +69,7 @@ export function MistakeLog({ problemId, mistakes, onChanged }: MistakeLogProps) 
           {mistakes.map((mistake) => (
             <div
               key={mistake.id}
-              className="flex items-start gap-3 rounded-md border border-destructive/20 bg-destructive/[0.06] p-3"
+              className="flex items-start gap-3 rounded-md border border-destructive/25 bg-destructive-soft p-3"
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <div className="flex-1 min-w-0">

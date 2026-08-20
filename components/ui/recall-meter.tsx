@@ -46,7 +46,7 @@ export function RecallMeter({
             key={i}
             className={cn(
               'h-3 w-1 rounded-full',
-              i < filled ? TIER_FILL[tier] : 'bg-border-strong/60',
+              i < filled ? TIER_FILL[tier] : 'bg-border-strong/70',
             )}
           />
         ))}

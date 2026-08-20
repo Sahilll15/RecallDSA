@@ -7,38 +7,51 @@
      for pressure and red for failure. Light theme is the same system inverted,
      with the accent darkened to hold 4.5:1 on white. */
   :root {
-    --background: 220 20% 98%;
+    /* Light mode separates by border and shadow, not by fill: a white card on a
+       tinted ground with a hairline and a one-pixel lift. Dark mode inverts
+       that, using a lighter surface and no shadow at all. */
+    --background: 220 22% 95%;
     --surface: 0 0% 100%;
-    --surface-raised: 220 24% 96%;
+    --surface-raised: 220 20% 98%;
     --card: 0 0% 100%;
-    --card-foreground: 222 30% 12%;
+    --card-foreground: 222 32% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 30% 12%;
-    --foreground: 222 30% 12%;
+    --popover-foreground: 222 32% 11%;
+    --foreground: 222 32% 11%;
 
-    --primary: 152 62% 30%;
+    --primary: 152 62% 29%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 16% 94%;
-    --secondary-foreground: 222 30% 12%;
-    --muted: 220 18% 94%;
-    --muted-foreground: 220 10% 40%;
-    --accent: 220 18% 94%;
-    --accent-foreground: 222 30% 12%;
+    --primary-soft: 152 48% 91%;
+    --secondary: 220 16% 92%;
+    --secondary-foreground: 222 32% 11%;
+    --muted: 220 16% 92%;
+    --muted-foreground: 220 10% 38%;
+    --accent: 220 16% 92%;
+    --accent-foreground: 222 32% 11%;
 
-    --destructive: 0 72% 44%;
+    --destructive: 0 72% 43%;
     --destructive-foreground: 0 0% 100%;
-    --success: 152 62% 30%;
+    --destructive-soft: 0 78% 95%;
+    --success: 152 62% 29%;
     --success-foreground: 0 0% 100%;
-    --warning: 30 88% 36%;
+    --success-soft: 152 48% 91%;
+    --warning: 28 92% 32%;
     --warning-foreground: 0 0% 100%;
-    --info: 205 80% 38%;
+    --warning-soft: 36 88% 90%;
+    --info: 205 82% 35%;
     --info-foreground: 0 0% 100%;
+    --info-soft: 202 78% 92%;
 
-    --border: 220 14% 89%;
-    --border-strong: 220 14% 80%;
-    --input: 220 14% 86%;
+    --border: 220 14% 85%;
+    --border-strong: 220 12% 68%;
+    --input: 220 14% 82%;
     --ring: 152 62% 34%;
     --radius: 0.625rem;
+
+    --calendar-empty: 220 14% 90%;
+    --panel-shadow: 0 1px 2px 0 hsl(220 30% 20% / 0.06), 0 1px 3px -1px hsl(220 30% 20% / 0.05);
+    --panel-shadow-raised: 0 4px 12px -2px hsl(220 30% 20% / 0.08), 0 2px 4px -2px hsl(220 30% 20% / 0.06);
+    --grid-color: hsl(220 18% 74% / 0.18);
   }
 
   .dark {
@@ -53,6 +66,7 @@
 
     --primary: 152 68% 45%;
     --primary-foreground: 222 30% 6%;
+    --primary-soft: 152 45% 13%;
     --secondary: 220 14% 14%;
     --secondary-foreground: 210 20% 96%;
     --muted: 220 14% 12%;
@@ -62,17 +76,26 @@
 
     --destructive: 0 76% 62%;
     --destructive-foreground: 222 30% 6%;
+    --destructive-soft: 0 45% 15%;
     --success: 152 68% 45%;
     --success-foreground: 222 30% 6%;
+    --success-soft: 152 45% 13%;
     --warning: 38 94% 58%;
     --warning-foreground: 222 30% 6%;
+    --warning-soft: 36 50% 14%;
     --info: 195 85% 58%;
     --info-foreground: 222 30% 6%;
+    --info-soft: 202 50% 14%;
 
     --border: 220 14% 16%;
     --border-strong: 220 12% 26%;
     --input: 220 12% 20%;
     --ring: 152 68% 45%;
+
+    --calendar-empty: 220 12% 17%;
+    --panel-shadow: none;
+    --panel-shadow-raised: none;
+    --grid-color: hsl(210 30% 90% / 0.045);
   }
 }
 
@@ -150,16 +173,26 @@
     @apply border border-border;
   }
 
-  /* Faint engineering grid, used as page ground and inside hero panels. */
+  /* Faint engineering grid. The colour is a token because a dark line on near
+     white is far louder than a light line on near black. */
   .grid-texture {
     background-image:
-      linear-gradient(to right, hsl(var(--foreground) / 0.045) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(var(--foreground) / 0.045) 1px, transparent 1px);
-    background-size: 44px 44px;
+      linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 
   .surface-panel {
     @apply rounded-[var(--radius)] border border-border bg-[hsl(var(--surface))];
+    box-shadow: var(--panel-shadow);
+  }
+
+  /* One pixel of lift, only where the theme asks for it. */
+  .elevated {
+    box-shadow: var(--panel-shadow);
+  }
+  .elevated-raised {
+    box-shadow: var(--panel-shadow-raised);
   }
 
   .cursor-blink {

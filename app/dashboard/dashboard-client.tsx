@@ -389,7 +389,7 @@ export function DashboardClient({
                       {weakPatterns.map((p) => (
                         <div
                           key={p.pattern}
-                          className="flex items-center justify-between gap-3 rounded-md border border-destructive/20 bg-destructive/[0.06] px-3 py-2"
+                          className="flex items-center justify-between gap-3 rounded-md border border-destructive/25 bg-destructive-soft px-3 py-2"
                         >
                           <span className="text-sm font-medium">
                             {patternLabel(p.pattern)}

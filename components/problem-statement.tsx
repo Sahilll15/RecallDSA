@@ -160,7 +160,7 @@ export function ProblemStatement({
               {hints.slice(0, hintsShown).map((hint, i) => (
                 <div
                   key={i}
-                  className="rounded-md border border-warning/30 bg-warning/[0.07] p-3 text-sm"
+                  className="rounded-md border border-warning/30 bg-warning-soft p-3 text-sm"
                 >
                   <span className="mr-2 font-mono text-xs font-semibold uppercase tracking-wider text-warning">
                     Hint {i + 1}

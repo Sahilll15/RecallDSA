@@ -7,13 +7,13 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-primary/25 bg-primary/10 text-primary',
+        default: 'border-primary/25 bg-primary-soft text-primary',
         secondary: 'border-border bg-secondary text-secondary-foreground',
-        destructive: 'border-destructive/30 bg-destructive/10 text-destructive',
+        destructive: 'border-destructive/25 bg-destructive-soft text-destructive',
         outline: 'border-border text-muted-foreground',
-        success: 'border-success/25 bg-success/10 text-success',
-        warning: 'border-warning/30 bg-warning/10 text-warning',
-        info: 'border-info/30 bg-info/10 text-info',
+        success: 'border-success/25 bg-success-soft text-success',
+        warning: 'border-warning/25 bg-warning-soft text-warning',
+        info: 'border-info/25 bg-info-soft text-info',
         /** Reads as data rather than status: mono, quiet, no fill. */
         code: 'border-border bg-transparent font-mono text-[0.6875rem] tracking-tight text-muted-foreground',
       },
@@ -25,11 +25,15 @@ const badgeVariants = cva(
 );
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
+/**
+ * A span, not a div: badges sit inside sentences and headings, and a div nested
+ * in a <p> is invalid markup that React reports as a hydration error.
+ */
 function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
 export { Badge, badgeVariants };

@@ -34,11 +34,11 @@ export function formatRelativeDate(date: Date | string): string {
 export function getDifficultyColor(difficulty?: string | null): string {
   switch (difficulty?.toLowerCase()) {
     case "easy":
-      return "border-success/30 bg-success/10 text-success"
+      return "border-success/25 bg-success-soft text-success"
     case "medium":
-      return "border-warning/30 bg-warning/10 text-warning"
+      return "border-warning/25 bg-warning-soft text-warning"
     case "hard":
-      return "border-destructive/30 bg-destructive/10 text-destructive"
+      return "border-destructive/25 bg-destructive-soft text-destructive"
     default:
       return "border-border bg-muted text-muted-foreground"
   }
@@ -47,14 +47,14 @@ export function getDifficultyColor(difficulty?: string | null): string {
 export function getPlatformColor(platform?: string | null): string {
   switch (platform?.toLowerCase()) {
     case "leetcode":
-      return "border-warning/30 bg-warning/10 text-warning"
+      return "border-warning/25 bg-warning-soft text-warning"
     case "gfg":
     case "geeksforgeeks":
-      return "border-success/30 bg-success/10 text-success"
+      return "border-success/25 bg-success-soft text-success"
     case "codeforces":
     case "codechef":
     case "atcoder":
-      return "border-info/30 bg-info/10 text-info"
+      return "border-info/25 bg-info-soft text-info"
     default:
       return "border-border bg-muted text-muted-foreground"
   }

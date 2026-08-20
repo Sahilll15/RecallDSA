@@ -25,7 +25,7 @@ export function MetricStrip({
   return (
     <div
       className={cn(
-        'grid grid-cols-1 divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border bg-surface sm:divide-y-0 sm:divide-x',
+        'elevated grid grid-cols-1 divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border bg-surface sm:divide-y-0 sm:divide-x',
         columns === 2 && 'sm:grid-cols-2',
         columns === 3 && 'sm:grid-cols-3',
         columns === 4 && 'sm:grid-cols-2 lg:grid-cols-4',

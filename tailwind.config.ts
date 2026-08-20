@@ -25,6 +25,7 @@ const config: Config = {
       colors: {
         border: 'hsl(var(--border))',
         'border-strong': 'hsl(var(--border-strong))',
+        'calendar-empty': 'hsl(var(--calendar-empty))',
         surface: {
           DEFAULT: 'hsl(var(--surface))',
           raised: 'hsl(var(--surface-raised))',
@@ -36,6 +37,7 @@ const config: Config = {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
+          soft: 'hsl(var(--primary-soft))',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
@@ -44,18 +46,22 @@ const config: Config = {
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
+          soft: 'hsl(var(--destructive-soft))',
         },
         success: {
           DEFAULT: 'hsl(var(--success))',
           foreground: 'hsl(var(--success-foreground))',
+          soft: 'hsl(var(--success-soft))',
         },
         warning: {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
+          soft: 'hsl(var(--warning-soft))',
         },
         info: {
           DEFAULT: 'hsl(var(--info))',
           foreground: 'hsl(var(--info-foreground))',
+          soft: 'hsl(var(--info-soft))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',

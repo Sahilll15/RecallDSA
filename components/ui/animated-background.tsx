@@ -5,9 +5,9 @@ export function AnimatedBackground() {
       <div
         className="grid-texture absolute inset-0"
         style={{
-          maskImage: 'radial-gradient(ellipse 85% 55% at 50% 0%, black 20%, transparent 95%)',
+          maskImage: 'radial-gradient(ellipse 75% 38% at 50% 0%, black 5%, transparent 85%)',
           WebkitMaskImage:
-            'radial-gradient(ellipse 85% 55% at 50% 0%, black 20%, transparent 95%)',
+            'radial-gradient(ellipse 75% 38% at 50% 0%, black 5%, transparent 85%)',
         }}
       />
       <div className="absolute -top-40 left-1/2 h-[26rem] w-[52rem] -translate-x-1/2 rounded-full bg-primary/[0.06] blur-[100px]" />

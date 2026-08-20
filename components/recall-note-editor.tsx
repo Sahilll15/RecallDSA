@@ -139,7 +139,7 @@ export function RecallNoteEditor({ problemId, pattern, note, onSaved }: RecallNo
         </label>
         {hints.map((hint, i) => (
           <div key={i} className="flex items-center gap-2">
-            <div className="flex-1 rounded-md border border-warning/30 bg-warning/[0.07] px-3 py-2 text-sm">
+            <div className="flex-1 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm">
               <span className="mr-2 font-mono text-xs font-semibold uppercase tracking-wider text-warning">
                 {i + 1}
               </span>
