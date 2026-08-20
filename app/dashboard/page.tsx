@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { MASTERY_INTERVAL_DAYS } from '@/lib/spaced-repetition';
 import { dedupeByCanonicalKey } from '@/lib/problem-identity';
 import { dedupeRevisionQueue } from '@/lib/revision-queue';
+import { buildActivityCalendar } from '@/lib/activity';
 import { DashboardClient, type PatternReadiness } from './dashboard-client';
 
 export default async function DashboardPage() {
@@ -51,7 +52,11 @@ export default async function DashboardPage() {
   const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  const [allRevisions, recentAttempts, mistakeConcepts] =
+  const activityWindowDays = 364;
+  const activitySince = new Date(today);
+  activitySince.setDate(activitySince.getDate() - (activityWindowDays - 1));
+
+  const [allRevisions, recentAttempts, mistakeConcepts, activityStamps] =
     await Promise.all([
       prisma.revision.findMany({
         where: { userId },
@@ -82,7 +87,16 @@ export default async function DashboardPage() {
         orderBy: { _count: { concept: 'desc' } },
         take: 5,
       }),
+      prisma.attempt.findMany({
+        where: { userId, createdAt: { gte: activitySince } },
+        select: { createdAt: true },
+      }),
     ]);
+
+  const activity = buildActivityCalendar(
+    activityStamps.map((a) => a.createdAt),
+    { days: activityWindowDays },
+  );
 
   const revisionsByPattern = dedupeRevisionQueue(allRevisions);
   const totalRevisions = revisionsByPattern.length;
@@ -163,6 +177,7 @@ export default async function DashboardPage() {
           .map((m) => ({ concept: m.concept as string, count: m._count })),
       }}
       problemsByDifficulty={problemsByDifficulty}
+      activity={activity}
     />
   );
 }

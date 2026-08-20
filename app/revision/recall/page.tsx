@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RatingButtons } from '@/components/rating-buttons';
 import { CodeViewer } from '@/components/code-viewer';
+import { ProblemStatement } from '@/components/problem-statement';
 import { Footer } from '@/components/footer';
 import { getDifficultyColor, getPlatformColor, cn, formatProblemTitle } from '@/lib/utils';
 import { PATTERNS, patternLabel } from '@/lib/constants';
@@ -153,6 +154,56 @@ export default function RecallSessionPage() {
     }
   };
 
+  // The handler lives in a ref so the one-second timer tick does not detach and
+  // reattach the window listener on every render.
+  const keyHandler = useRef<(event: KeyboardEvent) => void>(() => {});
+
+  keyHandler.current = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable);
+      if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (!current || submitting) return;
+
+      if (stage === 'rate') {
+        const ratings: RecallRating[] = ['again', 'hard', 'good', 'easy'];
+        const index = Number(event.key) - 1;
+        if (index >= 0 && index < ratings.length) {
+          event.preventDefault();
+          rate(ratings[index]);
+        }
+        return;
+      }
+
+      if (event.key !== ' ' && event.key !== 'Enter') return;
+      event.preventDefault();
+
+      if (stage === 'pattern') {
+        if (!patternRevealed) revealPattern();
+        else if (patternRecognized !== null) setStage('plan');
+        return;
+      }
+      if (stage === 'plan') {
+        if (!notesRevealed) setNotesRevealed(true);
+        else setStage('code');
+        return;
+      }
+      if (stage === 'code') {
+        if (!codeRevealed) revealCode();
+        else setStage('rate');
+      }
+  };
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => keyHandler.current(event);
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  }, []);
+
   const note = current?.problem.recallNote ?? null;
   const hints = note?.hints ?? [];
   const stageIndex = STAGES.findIndex((s) => s.key === stage);
@@ -271,6 +322,10 @@ export default function RecallSessionPage() {
               </CardHeader>
 
               <CardContent className="space-y-6">
+                <div className="rounded-md border border-border bg-surface-raised/40 p-4">
+                  <ProblemStatement problemId={current.problem.id} defaultOpen />
+                </div>
+
                 {stage === 'pattern' && (
                   <div className="space-y-4">
                     <p className="font-semibold">
@@ -486,7 +541,11 @@ export default function RecallSessionPage() {
                         onRate={rate}
                         disabled={submitting}
                       />
-                      <p className="text-xs text-muted-foreground text-center">
+                      <p className="text-center text-xs text-muted-foreground">
+                        <kbd className="rounded border border-border px-1 font-mono">1</kbd>
+                        {' to '}
+                        <kbd className="rounded border border-border px-1 font-mono">4</kbd>
+                        {' rates without the mouse. '}
                         {hintsRevealed > 0
                           ? `You used ${hintsRevealed} hint${hintsRevealed === 1 ? '' : 's'}, so be honest with the rating.`
                           : 'The buttons show when the problem comes back.'}

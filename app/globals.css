@@ -198,3 +198,59 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Problem statements arrive as third-party HTML, so their typography is styled
+   here rather than by classes we control. */
+@layer components {
+  .problem-statement {
+    @apply text-sm leading-relaxed text-foreground/90;
+  }
+  .problem-statement > * + * {
+    @apply mt-3;
+  }
+  .problem-statement p {
+    @apply leading-relaxed;
+  }
+  .problem-statement strong,
+  .problem-statement b {
+    @apply font-semibold text-foreground;
+  }
+  .problem-statement em,
+  .problem-statement i {
+    @apply italic;
+  }
+  .problem-statement code {
+    @apply rounded border border-border bg-surface-raised px-1 py-0.5 font-mono text-[0.8125rem] text-foreground;
+  }
+  .problem-statement pre {
+    @apply overflow-x-auto rounded-md border border-border bg-surface-raised p-3 font-mono text-xs leading-relaxed;
+  }
+  .problem-statement pre code {
+    @apply border-0 bg-transparent p-0 text-xs;
+  }
+  .problem-statement ul {
+    @apply list-disc space-y-1 pl-5;
+  }
+  .problem-statement ol {
+    @apply list-decimal space-y-1 pl-5;
+  }
+  .problem-statement a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .problem-statement img {
+    @apply my-3 max-w-full rounded-md border border-border;
+  }
+  .problem-statement table {
+    @apply w-full border-collapse text-xs;
+  }
+  .problem-statement th,
+  .problem-statement td {
+    @apply border border-border px-2 py-1 text-left;
+  }
+  .problem-statement sup {
+    @apply align-super text-[0.7em];
+  }
+  .problem-statement sub {
+    @apply align-sub text-[0.7em];
+  }
+}

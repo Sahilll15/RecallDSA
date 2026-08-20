@@ -10,13 +10,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CodeViewer } from '@/components/code-viewer'
 import { RatingButtons } from '@/components/rating-buttons'
+import { ProblemStatement } from '@/components/problem-statement'
 import { RecallNoteEditor, type RecallNoteData } from '@/components/recall-note-editor'
 import { MistakeLog, type MistakeData } from '@/components/mistake-log'
 import { AttemptHistory, type AttemptData } from '@/components/attempt-history'
-import { getDifficultyColor, getPlatformColor, formatRelativeDate } from '@/lib/utils'
+import { getDifficultyColor, getPlatformColor, formatRelativeDate, formatProblemTitle } from '@/lib/utils'
 import { patternLabel } from '@/lib/constants'
 import type { RecallRating } from '@/lib/spaced-repetition'
-import { Calendar, Plus, Trash2, Code2, Clock, TrendingUp, Sparkles, FileCode, Brain, AlertTriangle, History } from 'lucide-react'
+import { Calendar, Plus, Trash2, Code2, Clock, TrendingUp, Sparkles, FileCode, Brain, AlertTriangle, History, Eye, EyeOff } from 'lucide-react'
 import { Footer } from '@/components/footer'
 
 interface ProblemData {
@@ -49,6 +50,9 @@ export default function ProblemDetailPage() {
   const [problem, setProblem] = useState<ProblemData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  // The solution stays hidden until asked for: seeing it for free
+  // turns a recall exercise into reading.
+  const [solutionShown, setSolutionShown] = useState(false)
 
   const fetchProblem = useCallback(async () => {
     if (!problemId) return
@@ -147,12 +151,12 @@ export default function ProblemDetailPage() {
       <main className="container mx-auto px-4 py-8 max-w-6xl space-y-8">
         <div className="space-y-6">
           <div>
-            <Badge className="mb-4">
-              <FileCode className="h-3 w-3 mr-2" />
-              Problem Details
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
-              {problem.title}
+            <p className="eyebrow mb-2 flex items-center gap-1.5">
+              <FileCode className="h-3.5 w-3.5 text-primary" />
+              Problem
+            </p>
+            <h1 className="mb-4 font-display text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+              {formatProblemTitle(problem.title)}
             </h1>
             
             <div className="flex flex-wrap gap-2 mb-4">
@@ -186,7 +190,7 @@ export default function ProblemDetailPage() {
               )}
             </div>
 
-            <p className="text-sm text-muted-foreground font-mono bg-muted/50 px-3 py-2 rounded-lg inline-block mb-6">
+            <p className="mb-6 inline-block rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-xs text-muted-foreground">
               {problem.path}
             </p>
 
@@ -272,23 +276,50 @@ export default function ProblemDetailPage() {
           )}
         </div>
 
-        <Card className="shadow-lg overflow-hidden">
-          <CardHeader className="bg-muted/30">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Code2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Solution Code</CardTitle>
-                <CardDescription className="mt-1">
-                  Your implementation for this problem
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <CodeViewer code={problem.content} language={problem.language} />
+        <Card>
+          <CardContent className="p-5">
+            <ProblemStatement problemId={problem.id} />
           </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden">
+          <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
+            <div className="space-y-1">
+              <p className="eyebrow flex items-center gap-1.5">
+                <Code2 className="h-3.5 w-3.5 text-primary" />
+                Your solution
+              </p>
+              <CardDescription>
+                {solutionShown
+                  ? 'Compare it against what you just reconstructed.'
+                  : 'Reconstruct it from the question first, then compare.'}
+              </CardDescription>
+            </div>
+            <Button
+              variant={solutionShown ? 'ghost' : 'outline'}
+              size="sm"
+              onClick={() => setSolutionShown((v) => !v)}
+              aria-expanded={solutionShown}
+              className="shrink-0"
+            >
+              {solutionShown ? (
+                <>
+                  <EyeOff className="h-3.5 w-3.5" />
+                  Hide
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5" />
+                  Reveal solution
+                </>
+              )}
+            </Button>
+          </CardHeader>
+          {solutionShown && (
+            <CardContent className="border-t border-border p-0">
+              <CodeViewer code={problem.content} language={problem.language} />
+            </CardContent>
+          )}
         </Card>
 
         <Card className="shadow-lg">

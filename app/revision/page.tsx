@@ -11,6 +11,8 @@ import {
   History,
   Layers,
   Loader2,
+  Search,
+  Tags,
   Target,
   TrendingUp,
   Trophy,
@@ -23,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { RevisionRow, type RevisionRowData } from '@/components/revision-row';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatProblemTitle, formatRelativeDate, getDifficultyColor } from '@/lib/utils';
 import { patternLabel } from '@/lib/constants';
@@ -46,6 +49,15 @@ interface DuplicateReport {
   titles: string[];
 }
 
+interface ClassifyReport {
+  unclassified: number;
+  total: number;
+}
+
+/** How long an automatic commit sync waits before running again. */
+const AUTO_SYNC_INTERVAL_MS = 30 * 60 * 1000;
+const AUTO_SYNC_KEY = 'recalldsa:last-auto-sync';
+
 const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: 'due', label: 'Due' },
   { key: 'upcoming', label: 'Upcoming' },
@@ -66,6 +78,12 @@ export default function RevisionPage() {
   const [cleaning, setCleaning] = useState(false);
   const [cleaned, setCleaned] = useState<number | null>(null);
 
+  const [classify, setClassify] = useState<ClassifyReport | null>(null);
+  const [classifying, setClassifying] = useState(false);
+  const [classified, setClassified] = useState<number | null>(null);
+
+  const [query, setQuery] = useState('');
+
   const loadRevisions = useCallback(
     () =>
       fetch('/api/revisions')
@@ -83,9 +101,95 @@ export default function RevisionPage() {
     [],
   );
 
+  const loadClassify = useCallback(
+    () =>
+      fetch('/api/problems/enrich')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => setClassify(data))
+        .catch(() => setClassify(null)),
+    [],
+  );
+
+  const refresh = useCallback(
+    () => Promise.all([loadRevisions(), loadDuplicates(), loadClassify()]),
+    [loadRevisions, loadDuplicates, loadClassify],
+  );
+
   useEffect(() => {
-    Promise.all([loadRevisions(), loadDuplicates()]).finally(() => setLoading(false));
-  }, [loadRevisions, loadDuplicates]);
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
+
+  // Coming back to the tab should show the real queue, not a stale snapshot.
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') loadRevisions();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [loadRevisions]);
+
+  // Newly solved problems appear without being asked for. Throttled, because a
+  // backfill walks commit history and that is not free.
+  useEffect(() => {
+    let cancelled = false;
+
+    const lastRun = Number(window.localStorage.getItem(AUTO_SYNC_KEY) ?? 0);
+    if (Date.now() - lastRun < AUTO_SYNC_INTERVAL_MS) return;
+
+    window.localStorage.setItem(AUTO_SYNC_KEY, String(Date.now()));
+
+    fetch('/api/repos/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ days: 7 }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        if (data.scheduled > 0) setBackfill(data);
+        return refresh();
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh]);
+
+  const runClassify = async () => {
+    setClassifying(true);
+    setError(null);
+    let offset = 0;
+    let updated = 0;
+
+    try {
+      // Batched so a large library cannot outlive the request timeout.
+      for (let guard = 0; guard < 60; guard++) {
+        const res = await fetch('/api/problems/enrich', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offset, limit: 25 }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Could not classify problems');
+
+        updated += data.updated ?? 0;
+        offset = data.nextOffset ?? offset + 25;
+        if (data.done) break;
+      }
+
+      setClassified(updated);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not classify problems');
+    } finally {
+      setClassifying(false);
+    }
+  };
 
   const runBackfill = async () => {
     setBackfilling(true);
@@ -100,7 +204,7 @@ export default function RevisionPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Backfill failed');
       setBackfill(data);
-      await Promise.all([loadRevisions(), loadDuplicates()]);
+      await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Backfill failed');
     } finally {
@@ -118,6 +222,7 @@ export default function RevisionPage() {
       setCleaned(data.removed);
       setDuplicates(null);
       await loadRevisions();
+      await loadDuplicates();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not remove duplicates');
     } finally {
@@ -132,7 +237,7 @@ export default function RevisionPage() {
   const upcoming = allRevisions.filter((r) => new Date(r.nextDate) >= endOfToday);
   const mastered = allRevisions.filter((r) => r.intervalDays >= MASTERY_INTERVAL_DAYS);
 
-  const shown =
+  const scoped =
     filter === 'due'
       ? due
       : filter === 'upcoming'
@@ -140,6 +245,15 @@ export default function RevisionPage() {
         : filter === 'mastered'
           ? mastered
           : allRevisions;
+
+  const needle = query.trim().toLowerCase();
+  const shown = needle
+    ? scoped.filter((r) =>
+        `${r.problem.title} ${r.problem.pattern ?? ''} ${r.problem.difficulty ?? ''}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    : scoped;
 
   const stats = [
     {
@@ -259,6 +373,48 @@ export default function RevisionPage() {
           </motion.div>
         )}
 
+        {classify && classify.unclassified > 0 && classified === null && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 flex flex-col gap-3 rounded-[var(--radius)] border border-info/30 bg-info/[0.07] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-2.5">
+              <Tags className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+              <div className="space-y-0.5 text-sm">
+                <p className="font-medium">
+                  <span data-numeric>{classify.unclassified}</span> of{' '}
+                  <span data-numeric>{classify.total}</span> problems have no pattern
+                </p>
+                <p className="text-muted-foreground">
+                  A file path names the problem, not the technique. This reads the real topic
+                  tags from LeetCode and fills in the pattern and difficulty.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runClassify}
+              disabled={classifying}
+              className="shrink-0 border-info/40 text-info hover:bg-info/10"
+            >
+              {classifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              {classifying ? 'Classifying' : 'Classify patterns'}
+            </Button>
+          </motion.div>
+        )}
+
+        {classified !== null && (
+          <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary/[0.07] px-4 py-3 text-sm">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+            <span>
+              Classified <span data-numeric>{classified}</span> problem
+              {classified === 1 ? '' : 's'} from their LeetCode topic tags.
+            </span>
+          </div>
+        )}
+
         {cleaned !== null && (
           <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary/[0.07] px-4 py-3 text-sm">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
@@ -350,11 +506,23 @@ export default function RevisionPage() {
             </span>
           </div>
 
-          <div
-            role="tablist"
-            aria-label="Filter revisions"
-            className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
-          >
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter by title or pattern"
+                aria-label="Filter the queue"
+                className="h-8 w-52 pl-9 text-xs"
+              />
+            </div>
+
+            <div
+              role="tablist"
+              aria-label="Filter revisions"
+              className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+            >
             {FILTERS.map((f) => (
               <button
                 key={f.key}
@@ -368,9 +536,10 @@ export default function RevisionPage() {
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {f.label}
-              </button>
-            ))}
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -389,7 +558,9 @@ export default function RevisionPage() {
                 </span>
                 <div className="space-y-1">
                   <p className="font-display text-base font-semibold">
-                    {filter === 'due'
+                    {needle
+                      ? `Nothing matches "${query.trim()}"`
+                      : filter === 'due'
                       ? 'Nothing due. Nice work.'
                       : filter === 'upcoming'
                         ? 'No upcoming reviews scheduled'
@@ -398,7 +569,9 @@ export default function RevisionPage() {
                           : 'No problems tracked yet'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {filter === 'mastered'
+                    {needle
+                      ? 'Clear the filter to see the rest of the queue.'
+                      : filter === 'mastered'
                       ? `A problem counts as mastered once its interval passes ${MASTERY_INTERVAL_DAYS} days.`
                       : 'Track problems from your library to build a review queue.'}
                   </p>

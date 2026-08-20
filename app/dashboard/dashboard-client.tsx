@@ -9,6 +9,8 @@ import {
   AnimatedCardTitle,
 } from '@/components/ui/animated-card';
 import { MetricStrip } from '@/components/ui/metric-strip';
+import { ActivityCalendar } from '@/components/ui/activity-calendar';
+import type { ActivityCalendar as ActivityData } from '@/lib/activity';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { AnimatedBackground } from '@/components/ui/animated-background';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,7 @@ import {
   Lightbulb,
   AlertTriangle,
   Clock,
+  Flame,
   TrendingUp,
 } from 'lucide-react';
 import { Footer } from '@/components/footer';
@@ -65,6 +68,7 @@ interface DashboardClientProps {
     difficulty: string | null;
     _count: number;
   }>;
+  activity: ActivityData;
 }
 
 const difficultyBars: Record<string, string> = {
@@ -78,6 +82,7 @@ export function DashboardClient({
   stats,
   readiness,
   problemsByDifficulty,
+  activity,
 }: DashboardClientProps) {
   const weakPatterns = readiness.patterns
     .filter((p) => p.attempts >= 2 && p.struggles / p.attempts >= 0.5)
@@ -163,6 +168,57 @@ export function DashboardClient({
                 },
               ]}
             />
+
+            <AnimatedCard delay={0.08}>
+              <AnimatedCardHeader>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="eyebrow flex items-center gap-1.5">
+                      <Flame className="h-3.5 w-3.5 text-primary" />
+                      Recall consistency
+                    </p>
+                    <AnimatedCardDescription>
+                      Every review of the last year, one square per day
+                    </AnimatedCardDescription>
+                  </div>
+                  <div className="flex items-center gap-5">
+                    <div>
+                      <p className="eyebrow">Current streak</p>
+                      <p data-numeric className="font-display text-2xl font-semibold">
+                        {activity.currentStreak}
+                        <span className="ml-1 text-sm font-normal text-muted-foreground">
+                          {activity.currentStreak === 1 ? 'day' : 'days'}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="eyebrow">Longest</p>
+                      <p data-numeric className="font-display text-2xl font-semibold">
+                        {activity.longestStreak}
+                        <span className="ml-1 text-sm font-normal text-muted-foreground">
+                          {activity.longestStreak === 1 ? 'day' : 'days'}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className="eyebrow">Reviews</p>
+                      <p data-numeric className="font-display text-2xl font-semibold">
+                        {activity.total}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                {activity.total === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    No reviews yet. Finish a recall session and the first square lights up.
+                  </p>
+                ) : (
+                  <ActivityCalendar days={activity.days} />
+                )}
+              </AnimatedCardContent>
+            </AnimatedCard>
 
             {stats.dueNow > 0 && (
               <AnimatedCard
