@@ -94,13 +94,24 @@ export function ActivityCalendar({
                   day ? (
                     <span
                       key={day.date}
-                      title={label(day)}
                       aria-label={label(day)}
                       className={cn(
-                        'h-[11px] w-[11px] rounded-[2px]',
+                        'group/cell relative h-[11px] w-[11px] rounded-[2px]',
                         LEVEL_FILL[day.level],
                       )}
-                    />
+                    >
+                      <span
+                        className={cn(
+                          // The row sits in a horizontally-scrolling box, which clips
+                          // vertical overflow too — flip below for the top rows so the
+                          // tooltip stays inside the box instead of getting cut off.
+                          'pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 font-mono text-[0.625rem] text-popover-foreground opacity-0 shadow-md transition-opacity group-hover/cell:opacity-100',
+                          dayIndex < 2 ? 'top-[calc(100%+6px)]' : 'bottom-[calc(100%+6px)]',
+                        )}
+                      >
+                        {label(day)}
+                      </span>
+                    </span>
                   ) : (
                     <span key={`pad-${weekIndex}-${dayIndex}`} className="h-[11px] w-[11px]" />
                   ),

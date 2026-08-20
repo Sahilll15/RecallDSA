@@ -1,6 +1,7 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Archivo, Instrument_Sans, JetBrains_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import "./globals.css"
 
 // Font variables must live on <html>: Tailwind's preflight sets font-family there,
@@ -28,6 +29,16 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "RecallDSA - Reconstruct, don't just remember",
   description: "Syncs solved DSA problems from GitHub and trains you to reconstruct them: pattern recognition, active recall sessions, and true spaced repetition",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "RecallDSA",
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#0a0c10",
 }
 
 export default function RootLayout({
@@ -46,6 +57,7 @@ export default function RootLayout({
         >
           {children}
         </ThemeProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   )
