@@ -60,6 +60,52 @@ export async function GET(request: NextRequest) {
       where: { email: { not: null } },
       select: { id: true, email: true, name: true },
     });
+    const userIds = users.map((u) => u.id);
+
+    // Two queries for every user rather than two per user: the per-user loop
+    // below only groups results already in memory, no further DB round trips.
+    const [allAttempts, allRevisions] = await Promise.all([
+      prisma.attempt.findMany({
+        where: { userId: { in: userIds }, createdAt: { gte: since } },
+        select: { userId: true, createdAt: true },
+      }),
+      prisma.revision.findMany({
+        where: { userId: { in: userIds }, nextDate: { lt: endOfToday } },
+        select: {
+          id: true,
+          userId: true,
+          nextDate: true,
+          lastRevised: true,
+          repetitions: true,
+          createdAt: true,
+          problem: {
+            select: {
+              id: true,
+              title: true,
+              path: true,
+              difficulty: true,
+              pattern: true,
+              platform: true,
+            },
+          },
+        },
+        orderBy: { nextDate: 'asc' },
+      }),
+    ]);
+
+    const attemptsByUser = new Map<string, Date[]>();
+    for (const a of allAttempts) {
+      const list = attemptsByUser.get(a.userId);
+      if (list) list.push(a.createdAt);
+      else attemptsByUser.set(a.userId, [a.createdAt]);
+    }
+
+    const revisionsByUser = new Map<string, typeof allRevisions>();
+    for (const r of allRevisions) {
+      const list = revisionsByUser.get(r.userId);
+      if (list) list.push(r);
+      else revisionsByUser.set(r.userId, [r]);
+    }
 
     const report: Array<{
       user: string;
@@ -70,39 +116,11 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     for (const user of users) {
-      const [attempts, revisions] = await Promise.all([
-        prisma.attempt.findMany({
-          where: { userId: user.id, createdAt: { gte: since } },
-          select: { createdAt: true },
-        }),
-        prisma.revision.findMany({
-          where: { userId: user.id, nextDate: { lt: endOfToday } },
-          select: {
-            id: true,
-            nextDate: true,
-            lastRevised: true,
-            repetitions: true,
-            createdAt: true,
-            problem: {
-              select: {
-                id: true,
-                title: true,
-                path: true,
-                difficulty: true,
-                pattern: true,
-                platform: true,
-              },
-            },
-          },
-          orderBy: { nextDate: 'asc' },
-        }),
-      ]);
+      const attempts = attemptsByUser.get(user.id) ?? [];
+      const revisions = revisionsByUser.get(user.id) ?? [];
 
       const due = dedupeRevisionQueue(revisions);
-      const activity = buildActivityCalendar(
-        attempts.map((a) => a.createdAt),
-        { days: STREAK_WINDOW_DAYS, today: now },
-      );
+      const activity = buildActivityCalendar(attempts, { days: STREAK_WINDOW_DAYS, today: now });
 
       const risk = assessStreakRisk({ activity, dueCount: due.length, now });
 

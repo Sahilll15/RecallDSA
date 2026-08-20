@@ -59,18 +59,36 @@ describe('assessStreakRisk', () => {
     expect(risk.reason).toBe('nothing-due');
   });
 
-  it('escalates the tone as the day runs out', () => {
+  it('escalates the tone as the UTC day runs out', () => {
     const activity = calendarFor([at('2026-08-19T10:00:00')]);
-    const urgencyAt = (hour: number) =>
+    const urgencyAt = (utcHour: number) =>
       assessStreakRisk({
         activity,
         dueCount: 1,
-        now: new Date(2026, 7, 20, hour, 0, 0),
+        now: new Date(Date.UTC(2026, 7, 20, utcHour, 0, 0)),
       }).urgency;
 
     expect(urgencyAt(9)).toBe('nudge');
     expect(urgencyAt(17)).toBe('warning');
     expect(urgencyAt(22)).toBe('final');
+  });
+
+  it('shifts the tone by the recipient\'s timezone offset, not the server\'s clock', () => {
+    const activity = calendarFor([at('2026-08-19T10:00:00')]);
+    // 14:30 UTC is still afternoon by a UTC reading, but already 8pm in IST
+    // (UTC+5:30) — the same instant should land in different urgency tiers.
+    const now = new Date(Date.UTC(2026, 7, 20, 14, 30, 0));
+
+    const utcReading = assessStreakRisk({ activity, dueCount: 1, now }).urgency;
+    const istReading = assessStreakRisk({
+      activity,
+      dueCount: 1,
+      now,
+      timezoneOffsetMinutes: 5.5 * 60,
+    }).urgency;
+
+    expect(utcReading).toBe('nudge');
+    expect(istReading).toBe('final');
   });
 });
 

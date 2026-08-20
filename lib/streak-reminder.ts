@@ -22,9 +22,21 @@ export interface ReminderProblem {
   externalUrl?: string | null;
 }
 
-/** Hour of the local day at which the tone escalates. */
+/** Hour of the recipient's day at which the tone escalates. */
 const WARNING_HOUR = 16;
 const FINAL_HOUR = 20;
+
+/**
+ * Hour of day at a given UTC offset. `now.getHours()` reads the *executing
+ * server's* local time, which on a cron is an accident of where it happens to
+ * run (UTC on Vercel today, but not guaranteed) and has nothing to do with the
+ * recipient's actual evening. There is no per-user timezone stored yet, so
+ * callers default to UTC, but this makes that an explicit, documented choice
+ * rather than a silent dependency on the server's clock.
+ */
+function localHour(date: Date, timezoneOffsetMinutes: number): number {
+  return new Date(date.getTime() + timezoneOffsetMinutes * 60_000).getUTCHours();
+}
 
 function urgencyFor(hour: number): ReminderUrgency {
   if (hour >= FINAL_HOUR) return 'final';
@@ -41,14 +53,17 @@ export function assessStreakRisk({
   activity,
   dueCount,
   now = new Date(),
+  timezoneOffsetMinutes = 0,
 }: {
   activity: Pick<ActivityCalendar, 'days' | 'currentStreak'>;
   dueCount: number;
   now?: Date;
+  /** Recipient's UTC offset in minutes, once one is stored per user. Defaults to UTC. */
+  timezoneOffsetMinutes?: number;
 }): StreakRisk {
   const today = activity.days[activity.days.length - 1];
   const reviewedToday = (today?.count ?? 0) > 0;
-  const urgency = urgencyFor(now.getHours());
+  const urgency = urgencyFor(localHour(now, timezoneOffsetMinutes));
 
   if (reviewedToday) {
     return {
@@ -96,6 +111,24 @@ const HEADLINE: Record<ReminderUrgency, (days: number) => string> = {
   final: (d) => `Last call to keep your ${d}-day streak`,
 };
 
+/**
+ * Email-safe hex, not CSS variables: a mail client never loads the app's
+ * stylesheet. Exact conversions of app/globals.css's dark-theme
+ * --success/--warning/--destructive tokens — the one place both live, so a
+ * future palette change only has one spot to update instead of three.
+ */
+const EMAIL_PALETTE = {
+  easy: { fg: '#25c178', soft: '#123022' },
+  medium: { fg: '#f9af2f', soft: '#362712' },
+  hard: { fg: '#e85454', soft: '#371515' },
+} as const;
+
+const URGENCY_COLOR: Record<ReminderUrgency, string> = {
+  nudge: EMAIL_PALETTE.easy.fg,
+  warning: EMAIL_PALETTE.medium.fg,
+  final: EMAIL_PALETTE.hard.fg,
+};
+
 /** Written lowercase because it is spoken after "Hi <name>,". */
 const OPENING: Record<ReminderUrgency, (days: number) => string> = {
   nudge: (d) =>
@@ -131,29 +164,16 @@ export function buildStreakReminderEmail({
   const recallUrl = `${appUrl}/revision/recall`;
   const extra = dueCount - problems.length;
 
-  // Email-safe difficulty colors: a fixed hex triple, not the app's CSS
-  // variables, since a mail client never loads the app's stylesheet.
-  const DIFFICULTY_COLOR: Record<string, string> = {
-    easy: '#25c178',
-    medium: '#f9af2f',
-    hard: '#e85454',
-  };
-
   const rows = problems
     .map((p, i) => {
-      const difficultyColor = p.difficulty ? DIFFICULTY_COLOR[p.difficulty.toLowerCase()] : null;
+      const tone = p.difficulty
+        ? EMAIL_PALETTE[p.difficulty.toLowerCase() as keyof typeof EMAIL_PALETTE]
+        : null;
       const isLast = i === problems.length - 1;
 
-      const DIFFICULTY_SOFT: Record<string, string> = {
-        easy: '#123022',
-        medium: '#362712',
-        hard: '#371515',
-      };
-      const softBg = p.difficulty ? DIFFICULTY_SOFT[p.difficulty.toLowerCase()] : null;
-
       const tags = [
-        p.difficulty && difficultyColor && softBg
-          ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${softBg};color:${difficultyColor};font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">${escapeHtml(p.difficulty)}</span>`
+        p.difficulty && tone
+          ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${tone.soft};color:${tone.fg};font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">${escapeHtml(p.difficulty)}</span>`
           : '',
         p.pattern
           ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;border:1px solid #23272f;color:#969eab;font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:11px;">${escapeHtml(p.pattern)}</span>`
@@ -186,11 +206,6 @@ export function buildStreakReminderEmail({
 
   // Urgency reads as a status strip before any text is parsed, the way a CI
   // run signals pass/fail before you read the log — familiar to the audience.
-  const URGENCY_COLOR: Record<ReminderUrgency, string> = {
-    nudge: '#25c178',
-    warning: '#f9af2f',
-    final: '#e85454',
-  };
   const stripColor = URGENCY_COLOR[urgency];
 
   const html = `<!DOCTYPE html>
