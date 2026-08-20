@@ -60,6 +60,35 @@ describe('canonicalProblemKey', () => {
   it('normalises separators and case', () => {
     expect(canonicalProblemKey('Two_Sum.java')).toBe(canonicalProblemKey('two-sum.py'));
   });
+
+  it('does not collapse two problems that share a difficulty-tier folder and a generic filename', () => {
+    // Both slugify their filename to the generic "solution" and sit directly
+    // under a difficulty tier, which must not be trusted as problem identity.
+    expect(canonicalProblemKey('two-sum/Easy/Solution.java')).not.toBe(
+      canonicalProblemKey('reverse-linked-list/Easy/Solution.java'),
+    );
+    expect(canonicalProblemKey('two-sum/Easy/Solution.java')).toBe('two-sum');
+    expect(canonicalProblemKey('reverse-linked-list/Easy/Solution.java')).toBe(
+      'reverse-linked-list',
+    );
+  });
+
+  it('walks past a judge-name folder to find the real problem name', () => {
+    expect(canonicalProblemKey('leetcode/two-sum/main.cpp')).toBe('two-sum');
+  });
+
+  it('treats a numbered generic filename as generic, not as the problem name', () => {
+    // sol1.java and sol2.java are attempt numbers, not problem names, so two
+    // different problems using this convention must not collapse together.
+    expect(canonicalProblemKey('two-sum/sol1.java')).not.toBe(
+      canonicalProblemKey('reverse-linked-list/sol1.java'),
+    );
+    expect(canonicalProblemKey('two-sum/sol1.java')).toBe('two-sum');
+  });
+
+  it('treats a bare digit filename as generic', () => {
+    expect(canonicalProblemKey('two-sum/1.java')).toBe('two-sum');
+  });
 });
 
 describe('groupByCanonicalKey', () => {

@@ -5,8 +5,8 @@
  * identity rather than the path so a problem is queued once, not once per file.
  */
 
-/** Filenames that name the file, not the problem: the directory names it instead. */
-const GENERIC_FILENAMES = new Set([
+/** Filename stems that name the file, not the problem: the directory names it instead. */
+const GENERIC_STEMS = new Set([
   'solution',
   'solutions',
   'sol',
@@ -18,6 +18,8 @@ const GENERIC_FILENAMES = new Set([
   'app',
   'test',
   'untitled',
+  'attempt',
+  'try',
   'a',
   'b',
   'c',
@@ -45,6 +47,32 @@ const GENERIC_FILENAMES = new Set([
   'swift',
 ]);
 
+/**
+ * Directory names that describe the filing, not the problem: a difficulty
+ * tier or a judge name is shared by every problem stored under it, so if the
+ * filename is also generic, the directory must not be trusted as identity
+ * either.
+ */
+const STRUCTURAL_DIRECTORIES = new Set([
+  'easy',
+  'medium',
+  'hard',
+  'src',
+  'lib',
+  'solution',
+  'solutions',
+  'problem',
+  'problems',
+  'dsa',
+  'leetcode',
+  'gfg',
+  'geeksforgeeks',
+  'codeforces',
+  'codechef',
+  'atcoder',
+  'hackerrank',
+]);
+
 export function slugifySegment(segment: string): string {
   return segment
     .replace(/\.[^/.]+$/, '')
@@ -54,28 +82,42 @@ export function slugifySegment(segment: string): string {
     .replace(/^-|-$/g, '');
 }
 
-function namesAProblem(slug: string): boolean {
-  return slug.length > 0 && !GENERIC_FILENAMES.has(slug);
+/**
+ * A generic stem stays generic with a trailing attempt number (sol1, try2),
+ * and a bare number never names anything on its own.
+ */
+function isGenericStem(slug: string): boolean {
+  if (/^\d+$/.test(slug)) return true;
+  return GENERIC_STEMS.has(slug.replace(/\d+$/, ''));
+}
+
+function namesAProblem(slug: string, isDirectory = false): boolean {
+  if (slug.length === 0 || isGenericStem(slug)) return false;
+  if (isDirectory && STRUCTURAL_DIRECTORIES.has(slug)) return false;
+  return true;
 }
 
 /**
  * Identity of a problem regardless of which extension or layout wrote it.
- * The filename wins when it names the problem; only when it is generic
- * (Solution.java) does the directory name it, because a directory is just as
- * often a topic folder shared by many problems.
+ * The filename wins when it names the problem. Otherwise every ancestor
+ * directory is checked outward from the file, not just the immediate parent,
+ * since a generic filename is often nested two levels under the real name
+ * (two-sum/Easy/Solution.java) with a difficulty tier or judge name in between.
  */
 export function canonicalProblemKey(path: string): string {
   const segments = path.split('/').filter(Boolean);
-  const filename = segments.pop() ?? path;
-  const directory = segments.pop();
+  if (segments.length === 0) return '';
 
+  const filename = segments[segments.length - 1];
   const fileKey = slugifySegment(filename);
-  const dirKey = directory ? slugifySegment(directory) : '';
-
   if (namesAProblem(fileKey)) return fileKey;
-  if (namesAProblem(dirKey)) return dirKey;
 
-  return fileKey || dirKey || slugifySegment(path);
+  for (let i = segments.length - 2; i >= 0; i--) {
+    const dirKey = slugifySegment(segments[i]);
+    if (namesAProblem(dirKey, true)) return dirKey;
+  }
+
+  return fileKey || slugifySegment(path);
 }
 
 /** Groups items by the problem they belong to, preserving input order. */
