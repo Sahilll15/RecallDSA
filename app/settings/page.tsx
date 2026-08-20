@@ -276,8 +276,8 @@ export default function SettingsPage() {
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl">
-                  <Zap className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="rounded-lg border border-info/25 bg-info/10 p-2.5">
+                  <Zap className="h-5 w-5 text-info" />
                 </div>
                 <div>
                   <CardTitle className="text-xl">

@@ -24,6 +24,11 @@ const config: Config = {
     extend: {
       colors: {
         border: 'hsl(var(--border))',
+        'border-strong': 'hsl(var(--border-strong))',
+        surface: {
+          DEFAULT: 'hsl(var(--surface))',
+          raised: 'hsl(var(--surface-raised))',
+        },
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
@@ -47,6 +52,10 @@ const config: Config = {
         warning: {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
+        },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
@@ -72,14 +81,14 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          'var(--font-geist-sans)',
-          'Inter',
+          'var(--font-ui)',
           '-apple-system',
           'BlinkMacSystemFont',
           'system-ui',
           'sans-serif',
         ],
-        mono: ['var(--font-geist-mono)', 'Consolas', 'Monaco', 'monospace'],
+        display: ['var(--font-display)', 'var(--font-ui)', 'sans-serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'Menlo', 'monospace'],
       },
       fontSize: {
         '2xs': '0.625rem',
@@ -166,9 +175,10 @@ const config: Config = {
           '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
         xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        glow: '0 0 20px rgba(99, 102, 241, 0.4)',
-        'glow-sm': '0 0 10px rgba(99, 102, 241, 0.3)',
-        'glow-primary': '0 0 30px rgba(124, 58, 237, 0.35)',
+        glow: '0 0 24px hsl(var(--primary) / 0.28)',
+        'glow-sm': '0 0 12px hsl(var(--primary) / 0.22)',
+        'glow-primary': '0 0 32px hsl(var(--primary) / 0.3)',
+        'glow-danger': '0 0 24px hsl(var(--destructive) / 0.25)',
         inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
       },
       backgroundImage: {

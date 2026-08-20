@@ -69,9 +69,9 @@ export function MistakeLog({ problemId, mistakes, onChanged }: MistakeLogProps) 
           {mistakes.map((mistake) => (
             <div
               key={mistake.id}
-              className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-3"
+              className="flex items-start gap-3 rounded-md border border-destructive/20 bg-destructive/[0.06] p-3"
             >
-              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm whitespace-pre-wrap">{mistake.description}</p>
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">

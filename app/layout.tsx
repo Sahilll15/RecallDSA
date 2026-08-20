@@ -1,20 +1,27 @@
 import type { Metadata } from "next"
-import { Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google"
+import { Archivo, Instrument_Sans, JetBrains_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 // Font variables must live on <html>: Tailwind's preflight sets font-family there,
 // and an undefined var() invalidates the whole declaration (serif fallback bug).
-const sans = Bricolage_Grotesque({
+const display = Archivo({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
   display: "swap",
 })
 
-const mono = IBM_Plex_Mono({
+const ui = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-ui",
+  display: "swap",
+})
+
+const mono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
   display: "swap",
 })
 
@@ -29,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${display.variable} ${ui.variable} ${mono.variable}`}>
       <body className="font-sans">
         <ThemeProvider
           attribute="class"

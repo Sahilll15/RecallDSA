@@ -215,10 +215,10 @@ export function HomeClient({ authError }: { authError?: string | null }) {
                     transition={{ delay: 0.6 }}
                     className="rounded-md border border-border/50 bg-muted/30 p-3 font-mono text-xs"
                   >
-                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-500 mb-2">
+                    <div className="flex items-center gap-2 mb-2 text-xs text-primary">
                       <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary"></span>
                       </span>
                       Webhook push
                     </div>

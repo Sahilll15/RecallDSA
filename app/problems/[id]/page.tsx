@@ -321,8 +321,8 @@ export default function ProblemDetailPage() {
           <Card className="shadow-lg">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <div className="rounded-md border border-destructive/25 bg-destructive/10 p-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
                 </div>
                 <div>
                   <CardTitle>Mistakes</CardTitle>
@@ -344,8 +344,8 @@ export default function ProblemDetailPage() {
           <Card className="shadow-lg">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg">
-                  <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="rounded-md border border-info/25 bg-info/10 p-2">
+                  <History className="h-4 w-4 text-info" />
                 </div>
                 <div>
                   <CardTitle>Attempt History</CardTitle>

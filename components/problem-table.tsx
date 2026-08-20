@@ -12,16 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/data-table';
-import { cn, getDifficultyColor, formatDate } from '@/lib/utils';
+import { cn, getDifficultyColor, formatDate, formatProblemTitle } from '@/lib/utils';
 import { patternLabel } from '@/lib/constants';
-import {
-  Code2,
-  Eye,
-  Plus,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-} from 'lucide-react';
+import { Eye, Plus, ChevronDown, ChevronUp, ExternalLink, Files } from 'lucide-react';
 import { CodeViewer } from './code-viewer';
 import Link from 'next/link';
 
@@ -34,6 +27,8 @@ interface Problem {
   language: string | null;
   updatedAt: string;
   path: string;
+  /** How many files in the repo hold this one problem. */
+  fileCount?: number;
   revisions: Array<{ id: string; nextDate: string; lastRevised: string | null }>;
 }
 
@@ -61,8 +56,8 @@ function reviewState(problem: Problem): {
 }
 
 const TONE_CLASSES = {
-  due: 'border-transparent bg-red-500/10 text-red-600 dark:text-red-400',
-  scheduled: 'border-transparent bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  due: 'border-destructive/30 bg-destructive/10 text-destructive',
+  scheduled: 'border-info/30 bg-info/10 text-info',
   untracked: 'text-muted-foreground',
 } as const;
 
@@ -98,10 +93,10 @@ export function ProblemTable({
   };
 
   return (
-    <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
+    <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-surface">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
+          <TableRow className="bg-surface-raised hover:bg-surface-raised">
             <TableHead className="w-[40px]"></TableHead>
             <TableHead>Problem</TableHead>
             <TableHead>Review</TableHead>
@@ -115,7 +110,7 @@ export function ProblemTable({
             const state = reviewState(problem);
             return (
               <React.Fragment key={problem.id}>
-                <tr className="group hover:bg-muted/50 transition-colors border-b border-border/50">
+                <tr className="group border-b border-border transition-colors last:border-0 hover:bg-surface-raised">
                   <TableCell>
                     <button
                       onClick={() => toggleRow(problem.id)}
@@ -131,36 +126,36 @@ export function ProblemTable({
                   </TableCell>
 
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 bg-primary/10 rounded-md hidden sm:block">
-                        <Code2 className="h-3.5 w-3.5 text-primary" />
-                      </div>
-                      <div className="min-w-0">
+                    <div className="min-w-0 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/problems/${problem.id}`}
-                          className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1"
+                          className="font-display text-sm font-semibold transition-colors hover:text-primary"
                         >
-                          {problem.title}
+                          {formatProblemTitle(problem.title)}
                         </Link>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {problem.pattern && (
-                            <Badge className="text-xs h-5">
-                              {patternLabel(problem.pattern)}
-                            </Badge>
-                          )}
-                          {problem.difficulty && (
-                            <Badge
-                              className={cn('text-xs h-5', getDifficultyColor(problem.difficulty))}
-                            >
-                              {problem.difficulty}
-                            </Badge>
-                          )}
-                          {problem.platform && (
-                            <Badge variant="outline" className="text-xs h-5">
-                              {problem.platform}
-                            </Badge>
-                          )}
-                        </div>
+                        {(problem.fileCount ?? 1) > 1 && (
+                          <Badge
+                            variant="outline"
+                            title={`${problem.fileCount} files in the repo hold this problem`}
+                          >
+                            <Files className="h-3 w-3" />
+                            <span data-numeric>{problem.fileCount}</span> files
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {problem.pattern && (
+                          <Badge variant="code">{patternLabel(problem.pattern)}</Badge>
+                        )}
+                        {problem.difficulty && (
+                          <Badge className={getDifficultyColor(problem.difficulty)}>
+                            {problem.difficulty}
+                          </Badge>
+                        )}
+                        {problem.platform && (
+                          <Badge variant="outline">{problem.platform}</Badge>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -176,12 +171,13 @@ export function ProblemTable({
                   </TableCell>
 
                   <TableCell className="hidden lg:table-cell">
-                    {problem.language && (
-                      <Badge variant="outline">{problem.language}</Badge>
-                    )}
+                    {problem.language && <Badge variant="code">{problem.language}</Badge>}
                   </TableCell>
 
-                  <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
+                  <TableCell
+                    data-numeric
+                    className="hidden font-mono text-xs text-muted-foreground xl:table-cell"
+                  >
                     {formatDate(problem.updatedAt)}
                   </TableCell>
 
@@ -238,7 +234,7 @@ export function ProblemTable({
                                   Code Preview
                                 </span>
                               </div>
-                              <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                              <code className="rounded border border-border bg-surface px-2 py-1 font-mono text-xs text-muted-foreground">
                                 {problem.path}
                               </code>
                             </div>
@@ -248,7 +244,7 @@ export function ProblemTable({
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                               </div>
                             ) : codeCache[problem.id] ? (
-                              <div className="rounded-lg overflow-hidden border border-border/50 max-h-96 overflow-y-auto">
+                              <div className="max-h-96 overflow-y-auto overflow-hidden rounded-[var(--radius)] border border-border">
                                 <CodeViewer
                                   code={codeCache[problem.id]}
                                   language={problem.language || 'text'}

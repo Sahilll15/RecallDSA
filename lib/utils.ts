@@ -30,32 +30,60 @@ export function formatRelativeDate(date: Date | string): string {
   return formatDate(date)
 }
 
+// Difficulty and platform read off semantic tokens so both themes stay legible.
 export function getDifficultyColor(difficulty?: string | null): string {
   switch (difficulty?.toLowerCase()) {
     case "easy":
-      return "text-green-600 bg-green-50 border-green-200"
+      return "border-success/30 bg-success/10 text-success"
     case "medium":
-      return "text-yellow-600 bg-yellow-50 border-yellow-200"
+      return "border-warning/30 bg-warning/10 text-warning"
     case "hard":
-      return "text-red-600 bg-red-50 border-red-200"
+      return "border-destructive/30 bg-destructive/10 text-destructive"
     default:
-      return "text-gray-600 bg-gray-50 border-gray-200"
+      return "border-border bg-muted text-muted-foreground"
   }
 }
 
 export function getPlatformColor(platform?: string | null): string {
   switch (platform?.toLowerCase()) {
     case "leetcode":
-      return "text-orange-600 bg-orange-50 border-orange-200"
+      return "border-warning/30 bg-warning/10 text-warning"
     case "gfg":
     case "geeksforgeeks":
-      return "text-green-600 bg-green-50 border-green-200"
+      return "border-success/30 bg-success/10 text-success"
     case "codeforces":
-      return "text-blue-600 bg-blue-50 border-blue-200"
     case "codechef":
-      return "text-yellow-600 bg-yellow-50 border-yellow-200"
+    case "atcoder":
+      return "border-info/30 bg-info/10 text-info"
     default:
-      return "text-purple-600 bg-purple-50 border-purple-200"
+      return "border-border bg-muted text-muted-foreground"
   }
+}
+
+const ACRONYMS = new Set([
+  "bst", "dp", "lru", "lfu", "api", "sql", "dns", "xor", "gcd", "lcm", "kmp",
+  "dfs", "bfs", "dsu", "url", "ip", "css", "html", "json", "cpu", "io",
+])
+
+const TRAILING_ROMAN = /^(i{2,3}|iv|vi{0,3}|ix|xi{0,2})$/i
+
+/**
+ * Titles come from file slugs, so "permutations-ii" title-cases to
+ * "Permutations Ii". Roman numerals only count at the end, where LeetCode puts
+ * them, otherwise a problem about the letter V would get shouted.
+ */
+export function formatProblemTitle(title: string): string {
+  const words = title.split(" ")
+
+  return words
+    .map((word, i) => {
+      const lower = word.toLowerCase()
+      if (ACRONYMS.has(lower)) return lower.toUpperCase()
+      if (i === words.length - 1 && i > 0 && TRAILING_ROMAN.test(lower)) {
+        return lower.toUpperCase()
+      }
+      return word
+    })
+    .join(" ")
 }
 

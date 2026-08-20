@@ -1,223 +1,303 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { Header } from "@/components/header"
-import { AnimatedBackground } from "@/components/ui/animated-background"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { getDifficultyColor, formatRelativeDate } from "@/lib/utils"
-import { patternLabel } from "@/lib/constants"
-import { MASTERY_INTERVAL_DAYS } from "@/lib/spaced-repetition"
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
-  AlertCircle,
+  AlertTriangle,
   ArrowRight,
   Brain,
-  Calendar,
-  CheckCircle,
-  Clock,
+  CheckCircle2,
   History,
-  Sparkles,
+  Layers,
+  Loader2,
   Target,
   TrendingUp,
   Trophy,
-} from "lucide-react"
-import Link from "next/link"
-import { Footer } from "@/components/footer"
-import { motion } from "framer-motion"
+} from 'lucide-react';
 
-interface Revision {
-  id: string
-  nextDate: string
-  lastRevised: string | null
-  intervalDays: number
-  repetitions: number
-  lapses: number
-  problem: {
-    id: string
-    title: string
-    difficulty: string | null
-    platform: string | null
-    pattern: string | null
-  }
-}
+import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
+import { AnimatedBackground } from '@/components/ui/animated-background';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { RevisionRow, type RevisionRowData } from '@/components/revision-row';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn, formatProblemTitle, formatRelativeDate, getDifficultyColor } from '@/lib/utils';
+import { patternLabel } from '@/lib/constants';
+import { MASTERY_INTERVAL_DAYS } from '@/lib/spaced-repetition';
 
-type Filter = "due" | "upcoming" | "all"
+type Revision = RevisionRowData;
+
+type Filter = 'due' | 'upcoming' | 'mastered' | 'all';
 
 interface BackfillResult {
-  scheduled: number
-  skipped: number
-  duplicatesCollapsed: number
-  days: number
-  problems: Array<{ id: string; title: string; pattern: string | null; solvedAt: string }>
+  scheduled: number;
+  skipped: number;
+  duplicatesCollapsed: number;
+  days: number;
+  problems: Array<{ id: string; title: string; pattern: string | null; solvedAt: string }>;
 }
 
-export default function RevisionPage() {
-  const [allRevisions, setAllRevisions] = useState<Revision[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<Filter>("due")
-  const [backfilling, setBackfilling] = useState(false)
-  const [backfill, setBackfill] = useState<BackfillResult | null>(null)
-  const [backfillError, setBackfillError] = useState<string | null>(null)
+interface DuplicateReport {
+  duplicates: number;
+  total: number;
+  titles: string[];
+}
 
-  const loadRevisions = () =>
-    fetch("/api/revisions")
-      .then((r) => r.json())
-      .then((data) => setAllRevisions(Array.isArray(data) ? data : []))
+const FILTERS: Array<{ key: Filter; label: string }> = [
+  { key: 'due', label: 'Due' },
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'mastered', label: 'Mastered' },
+  { key: 'all', label: 'All' },
+];
+
+export default function RevisionPage() {
+  const [allRevisions, setAllRevisions] = useState<Revision[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<Filter>('due');
+
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfill, setBackfill] = useState<BackfillResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [duplicates, setDuplicates] = useState<DuplicateReport | null>(null);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleaned, setCleaned] = useState<number | null>(null);
+
+  const loadRevisions = useCallback(
+    () =>
+      fetch('/api/revisions')
+        .then((r) => r.json())
+        .then((data) => setAllRevisions(Array.isArray(data) ? data : [])),
+    [],
+  );
+
+  const loadDuplicates = useCallback(
+    () =>
+      fetch('/api/revisions/dedupe')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => setDuplicates(data))
+        .catch(() => setDuplicates(null)),
+    [],
+  );
 
   useEffect(() => {
-    loadRevisions().finally(() => setLoading(false))
-  }, [])
+    Promise.all([loadRevisions(), loadDuplicates()]).finally(() => setLoading(false));
+  }, [loadRevisions, loadDuplicates]);
 
   const runBackfill = async () => {
-    setBackfilling(true)
-    setBackfill(null)
-    setBackfillError(null)
+    setBackfilling(true);
+    setBackfill(null);
+    setError(null);
     try {
-      const res = await fetch("/api/repos/backfill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/repos/backfill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ days: 7 }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Backfill failed")
-      setBackfill(data)
-      await loadRevisions()
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Backfill failed');
+      setBackfill(data);
+      await Promise.all([loadRevisions(), loadDuplicates()]);
     } catch (e) {
-      setBackfillError(e instanceof Error ? e.message : "Backfill failed")
+      setError(e instanceof Error ? e.message : 'Backfill failed');
     } finally {
-      setBackfilling(false)
+      setBackfilling(false);
     }
-  }
+  };
 
-  const now = new Date()
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  const removeDuplicates = async () => {
+    setCleaning(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/revisions/dedupe', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Could not remove duplicates');
+      setCleaned(data.removed);
+      setDuplicates(null);
+      await loadRevisions();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not remove duplicates');
+    } finally {
+      setCleaning(false);
+    }
+  };
 
-  const due = allRevisions.filter((r) => new Date(r.nextDate) < endOfToday)
-  const upcoming = allRevisions.filter((r) => new Date(r.nextDate) >= endOfToday)
-  const mastered = allRevisions.filter((r) => r.intervalDays >= MASTERY_INTERVAL_DAYS)
+  const now = new Date();
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-  const displayRevisions =
-    filter === "due" ? due : filter === "upcoming" ? upcoming : allRevisions
+  const due = allRevisions.filter((r) => new Date(r.nextDate) < endOfToday);
+  const upcoming = allRevisions.filter((r) => new Date(r.nextDate) >= endOfToday);
+  const mastered = allRevisions.filter((r) => r.intervalDays >= MASTERY_INTERVAL_DAYS);
 
-  const stats: Array<{
-    key: Filter | "mastered"
-    title: string
-    value: number
-    sub: string
-    icon: typeof Target
-    tint: string
-    iconTint: string
-  }> = [
+  const shown =
+    filter === 'due'
+      ? due
+      : filter === 'upcoming'
+        ? upcoming
+        : filter === 'mastered'
+          ? mastered
+          : allRevisions;
+
+  const stats = [
     {
-      key: "due",
-      title: "Due Now",
+      key: 'due' as Filter,
+      label: 'Due now',
       value: due.length,
-      sub: "Ready to recall",
+      sub: 'ready to recall',
       icon: Target,
-      tint: "from-red-500/10 to-orange-500/5",
-      iconTint: "bg-red-500/10 text-red-600 dark:text-red-400",
+      tone: 'text-destructive',
     },
     {
-      key: "upcoming",
-      title: "Upcoming",
+      key: 'upcoming' as Filter,
+      label: 'Upcoming',
       value: upcoming.length,
-      sub: "Scheduled ahead",
+      sub: 'scheduled ahead',
       icon: TrendingUp,
-      tint: "from-blue-500/10 to-cyan-500/5",
-      iconTint: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+      tone: 'text-info',
     },
     {
-      key: "mastered",
-      title: "Mastered",
+      key: 'mastered' as Filter,
+      label: 'Mastered',
       value: mastered.length,
-      sub: `Interval ${MASTERY_INTERVAL_DAYS}d or longer`,
+      sub: `${MASTERY_INTERVAL_DAYS}d interval or longer`,
       icon: Trophy,
-      tint: "from-green-500/10 to-emerald-500/5",
-      iconTint: "bg-green-500/10 text-green-600 dark:text-green-400",
+      tone: 'text-primary',
     },
-  ]
+  ];
 
   return (
     <div className="relative min-h-screen">
       <AnimatedBackground />
       <Header />
 
-      <main className="container relative mx-auto px-4 py-8 space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
+      <main className="container relative mx-auto max-w-6xl px-4 py-10">
+        <motion.header
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-border pb-6"
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
         >
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-1.5">Revision</h1>
-            <p className="text-muted-foreground">
+          <div className="space-y-2">
+            <p className="eyebrow">Spaced repetition</p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              Revision
+            </h1>
+            <p className="max-w-xl text-sm text-muted-foreground">
               Reconstruct the pattern, the approach, and the solution before you peek.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <Button
-              variant="outline"
-              onClick={runBackfill}
-              disabled={backfilling}
-              className="whitespace-nowrap"
-            >
-              <History className={`mr-2 h-4 w-4 ${backfilling ? "animate-spin" : ""}`} />
-              {backfilling ? "Reading commits..." : "Add this week's solves"}
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button variant="outline" onClick={runBackfill} disabled={backfilling}>
+              {backfilling ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <History className="h-4 w-4" />
+              )}
+              {backfilling ? 'Reading commits' : "Add this week's solves"}
             </Button>
             {due.length > 0 && (
               <Link href="/revision/recall">
-                <Button size="lg" className="group whitespace-nowrap">
-                  <Brain className="mr-2 h-5 w-5" />
-                  Start Recall Session ({due.length})
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                <Button size="lg" className="group">
+                  <Brain className="h-4 w-4" />
+                  Start recall
+                  <span
+                    data-numeric
+                    className="rounded bg-primary-foreground/15 px-1.5 py-0.5 font-mono text-xs"
+                  >
+                    {due.length}
+                  </span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Button>
               </Link>
             )}
           </div>
-        </motion.div>
+        </motion.header>
 
-        {backfillError && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {backfillError}
+        {error && (
+          <div
+            role="alert"
+            className="mt-6 flex items-start gap-2.5 rounded-[var(--radius)] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {duplicates && duplicates.duplicates > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 flex flex-col gap-3 rounded-[var(--radius)] border border-warning/30 bg-warning/[0.07] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-2.5">
+              <Layers className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <div className="space-y-0.5 text-sm">
+                <p className="font-medium">
+                  <span data-numeric>{duplicates.duplicates}</span> duplicate{' '}
+                  {duplicates.duplicates === 1 ? 'card' : 'cards'} left over from earlier syncs
+                </p>
+                <p className="text-muted-foreground">
+                  The queue already hides them. Removing them keeps your counts honest and
+                  preserves the copy holding the review history.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={removeDuplicates}
+              disabled={cleaning}
+              className="shrink-0 border-warning/40 text-warning hover:bg-warning/10"
+            >
+              {cleaning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              {cleaning ? 'Removing' : 'Remove duplicates'}
+            </Button>
+          </motion.div>
+        )}
+
+        {cleaned !== null && (
+          <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary/[0.07] px-4 py-3 text-sm">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+            <span>
+              Removed <span data-numeric>{cleaned}</span> duplicate{' '}
+              {cleaned === 1 ? 'card' : 'cards'}. Every problem is now queued once.
+            </span>
           </div>
         )}
 
         {backfill && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3"
+            className="mt-6 space-y-3 rounded-[var(--radius)] border border-primary/25 bg-primary/[0.05] p-4"
           >
-            <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div className="space-y-1">
-                <p className="font-semibold">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="space-y-1 text-sm">
+                <p className="font-medium">
                   {backfill.scheduled > 0
-                    ? `Added ${backfill.scheduled} problem${backfill.scheduled === 1 ? "" : "s"} from the last ${backfill.days} days`
+                    ? `Added ${backfill.scheduled} problem${backfill.scheduled === 1 ? '' : 's'} from the last ${backfill.days} days`
                     : `Nothing new from the last ${backfill.days} days`}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground">
                   Each one is scheduled from when you solved it, so the oldest comes up first.
                   {backfill.skipped > 0 && ` ${backfill.skipped} already tracked.`}
                   {backfill.duplicatesCollapsed > 0 &&
-                    ` ${backfill.duplicatesCollapsed} duplicate file${backfill.duplicatesCollapsed === 1 ? "" : "s"} collapsed.`}
+                    ` ${backfill.duplicatesCollapsed} duplicate file${backfill.duplicatesCollapsed === 1 ? '' : 's'} collapsed.`}
                 </p>
               </div>
             </div>
             {backfill.problems.length > 0 && (
-              <ul className="space-y-1.5 pl-8">
+              <ul className="space-y-1.5 border-t border-border pt-3 pl-7">
                 {backfill.problems.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium">{p.title}</span>
-                    {p.pattern && (
-                      <Badge variant="outline" className="text-xs">
-                        {patternLabel(p.pattern)}
-                      </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground font-mono">
+                    <span className="font-medium">{formatProblemTitle(p.title)}</span>
+                    {p.pattern && <Badge variant="code">{patternLabel(p.pattern)}</Badge>}
+                    <span className="font-mono text-xs text-muted-foreground">
                       solved {formatRelativeDate(p.solvedAt)}
                     </span>
                   </li>
@@ -227,199 +307,132 @@ export default function RevisionPage() {
           </motion.div>
         )}
 
-        <div className="grid gap-6 sm:grid-cols-3">
-          {stats.map((stat) => {
-            const clickable = stat.key !== "mastered"
-            return (
-              <Card
-                key={stat.key}
-                className={`group transition-all duration-300 hover:shadow-xl bg-gradient-to-br ${stat.tint} ${
-                  clickable ? "cursor-pointer hover:-translate-y-1" : ""
-                } ${filter === stat.key ? "ring-2 ring-primary shadow-lg" : ""}`}
-                onClick={() => clickable && setFilter(stat.key as Filter)}
+        {/* One instrument strip rather than three competing cards. */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-8 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-[var(--radius)] border border-border bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+        >
+          {stats.map((stat) => (
+            <button
+              key={stat.key}
+              type="button"
+              onClick={() => setFilter(stat.key)}
+              aria-pressed={filter === stat.key}
+              className={cn(
+                'group relative flex flex-col gap-1 px-5 py-4 text-left transition-colors hover:bg-surface-raised',
+                filter === stat.key && 'bg-surface-raised',
+              )}
+            >
+              <span className="flex items-center gap-1.5">
+                <stat.icon className={cn('h-3.5 w-3.5', stat.tone)} />
+                <span className="eyebrow">{stat.label}</span>
+              </span>
+              <span data-numeric className="font-display text-3xl font-semibold leading-none">
+                {loading ? '—' : stat.value}
+              </span>
+              <span className="text-xs text-muted-foreground">{stat.sub}</span>
+              {filter === stat.key && (
+                <span className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
+              )}
+            </button>
+          ))}
+        </motion.div>
+
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-lg font-semibold">
+              {FILTERS.find((f) => f.key === filter)?.label}
+            </h2>
+            <span data-numeric className="font-mono text-sm text-muted-foreground">
+              {shown.length} {shown.length === 1 ? 'problem' : 'problems'}
+            </span>
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Filter revisions"
+            className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+          >
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                role="tab"
+                aria-selected={filter === f.key}
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  'rounded px-2.5 py-1 text-xs font-medium transition-colors',
+                  filter === f.key
+                    ? 'bg-secondary text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-sm font-semibold">{stat.title}</CardTitle>
-                  <div className={`p-2 rounded-lg ${stat.iconTint}`}>
-                    <stat.icon className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold tabular-nums mb-1">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">{stat.sub}</p>
-                </CardContent>
-              </Card>
-            )
-          })}
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <Card className="shadow-md">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">
-                  {filter === "due" && "Due Now"}
-                  {filter === "upcoming" && "Upcoming Reviews"}
-                  {filter === "all" && "All Tracked Problems"}
-                </CardTitle>
-                <CardDescription className="mt-1">
-                  {displayRevisions.length}{" "}
-                  {displayRevisions.length === 1 ? "problem" : "problems"}
-                </CardDescription>
-              </div>
-              {filter !== "all" && (
-                <Button variant="outline" onClick={() => setFilter("all")} className="group">
-                  Show All
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              )}
+        <div className="mt-4">
+          {loading ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-[5.5rem] w-full rounded-[var(--radius)]" />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="p-4 border rounded-xl">
-                    <div className="flex items-center gap-4 mb-4">
-                      <Skeleton className="h-12 w-12 rounded-xl" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-6 w-3/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Skeleton className="h-6 w-20 rounded-lg" />
-                      <Skeleton className="h-6 w-20 rounded-lg" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : displayRevisions.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                  <CheckCircle className="h-8 w-8 text-muted-foreground" />
+          ) : shown.length === 0 ? (
+            <Card className="border-dashed">
+              <div className="flex flex-col items-center gap-4 px-6 py-14 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-raised">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                </span>
+                <div className="space-y-1">
+                  <p className="font-display text-base font-semibold">
+                    {filter === 'due'
+                      ? 'Nothing due. Nice work.'
+                      : filter === 'upcoming'
+                        ? 'No upcoming reviews scheduled'
+                        : filter === 'mastered'
+                          ? 'Nothing mastered yet'
+                          : 'No problems tracked yet'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {filter === 'mastered'
+                      ? `A problem counts as mastered once its interval passes ${MASTERY_INTERVAL_DAYS} days.`
+                      : 'Track problems from your library to build a review queue.'}
+                  </p>
                 </div>
-                <p className="text-lg font-semibold mb-2">
-                  {filter === "due"
-                    ? "Nothing due. Nice work."
-                    : filter === "upcoming"
-                      ? "No upcoming reviews scheduled"
-                      : "No problems tracked yet"}
-                </p>
-                <p className="text-sm text-muted-foreground mb-6">
-                  {filter === "all"
-                    ? "Track problems from your library to build a review queue"
-                    : "Solve something new or browse your library"}
-                </p>
                 <Link href="/problems">
-                  <Button size="lg" className="group">
-                    Browse Problems
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  <Button variant="outline">
+                    Browse problems
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {displayRevisions.map((revision) => {
-                  const isOverdue = new Date(revision.nextDate) < now
-                  const isDue = new Date(revision.nextDate) < endOfToday
-                  return (
-                    <Card
-                      key={revision.id}
-                      className={`group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${
-                        isOverdue ? "border-red-500/30 bg-red-500/5" : ""
-                      }`}
-                    >
-                      <CardContent className="p-5">
-                        <div className="flex items-start gap-4">
-                          <div
-                            className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${
-                              isDue
-                                ? "bg-gradient-to-br from-red-500/20 to-orange-500/20"
-                                : "bg-primary/15"
-                            }`}
-                          >
-                            <Calendar
-                              className={`h-6 w-6 ${isDue ? "text-red-600 dark:text-red-400" : "text-primary"}`}
-                            />
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">
-                              {revision.problem.title}
-                            </h3>
-
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {revision.problem.pattern && (
-                                <Badge variant="default">
-                                  {patternLabel(revision.problem.pattern)}
-                                </Badge>
-                              )}
-                              {revision.problem.difficulty && (
-                                <Badge className={getDifficultyColor(revision.problem.difficulty)}>
-                                  {revision.problem.difficulty}
-                                </Badge>
-                              )}
-                              {isOverdue && (
-                                <Badge variant="destructive">
-                                  <AlertCircle className="h-3 w-3 mr-1" />
-                                  Overdue
-                                </Badge>
-                              )}
-                              {revision.lapses > 0 && (
-                                <Badge variant="warning">
-                                  {revision.lapses} lapse{revision.lapses === 1 ? "" : "s"}
-                                </Badge>
-                              )}
-                            </div>
-
-                            <div className="flex flex-wrap gap-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-muted-foreground">Next: </span>
-                                <span
-                                  className={`font-semibold ${isOverdue ? "text-red-600 dark:text-red-400" : "text-foreground"}`}
-                                >
-                                  {formatRelativeDate(revision.nextDate)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Sparkles className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-muted-foreground">Interval: </span>
-                                <span className="font-semibold text-foreground">
-                                  {revision.intervalDays}d
-                                </span>
-                              </div>
-                              {revision.lastRevised && (
-                                <div className="flex items-center gap-2">
-                                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-muted-foreground">Last: </span>
-                                  <span className="font-semibold text-foreground">
-                                    {formatRelativeDate(revision.lastRevised)}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <Link href={`/problems/${revision.problem.id}`}>
-                            <Button variant="outline" className="group/btn whitespace-nowrap">
-                              Open
-                              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </Card>
+          ) : (
+            <ul className="space-y-2">
+              {shown.map((revision, i) => (
+                <motion.li
+                  key={revision.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.2,
+                    delay: Math.min(i * 0.03, 0.24),
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                >
+                  <RevisionRow revision={revision} now={now} />
+                </motion.li>
+              ))}
+            </ul>
+          )}
+        </div>
       </main>
 
       <Footer />
     </div>
-  )
+  );
 }

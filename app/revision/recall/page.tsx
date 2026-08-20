@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RatingButtons } from '@/components/rating-buttons';
 import { CodeViewer } from '@/components/code-viewer';
 import { Footer } from '@/components/footer';
-import { getDifficultyColor, getPlatformColor, cn } from '@/lib/utils';
+import { getDifficultyColor, getPlatformColor, cn, formatProblemTitle } from '@/lib/utils';
 import { PATTERNS, patternLabel } from '@/lib/constants';
 import type { RecallRating, SchedulingState } from '@/lib/spaced-repetition';
 import {
@@ -169,13 +169,13 @@ export default function RecallSessionPage() {
             <Skeleton className="h-64 w-full rounded-xl" />
           </div>
         ) : !current ? (
-          <Card className="border-dashed border-2">
-            <CardContent className="p-12 text-center space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+          <Card className="border-dashed">
+            <CardContent className="space-y-4 p-12 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+                <CheckCircle className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-xl font-bold mb-1">
+                <p className="mb-1 font-display text-xl font-semibold">
                   {reviewed > 0 ? 'Session complete' : 'Nothing due right now'}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -200,38 +200,60 @@ export default function RecallSessionPage() {
         ) : (
           <>
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Brain className="h-5 w-5 text-primary" />
-                </div>
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+                  <Brain className="h-4 w-4 text-primary" />
+                </span>
                 <div>
-                  <p className="text-sm font-semibold">Recall Session</p>
-                  <p className="text-xs text-muted-foreground">
-                    {index + 1} of {queue.length} due
+                  <p className="eyebrow">Recall session</p>
+                  <p data-numeric className="font-mono text-sm font-medium">
+                    {index + 1} / {queue.length}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Timer className="h-4 w-4" />
-                <span className="font-mono tabular-nums">{formatClock(elapsedSec)}</span>
+              <div className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5">
+                <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                <span data-numeric className="font-mono text-sm font-medium">
+                  {formatClock(elapsedSec)}
+                </span>
               </div>
             </div>
 
-            <div className="flex gap-1.5">
-              {STAGES.map((s, i) => (
-                <div
-                  key={s.key}
-                  className={cn(
-                    'h-1.5 flex-1 rounded-full transition-colors',
-                    i <= stageIndex ? 'bg-primary' : 'bg-muted',
-                  )}
-                />
-              ))}
+            {/* Stage track doubles as a legend: you can always see what is next. */}
+            <div className="space-y-2">
+              <div className="flex gap-1">
+                {STAGES.map((s, i) => (
+                  <div
+                    key={s.key}
+                    className={cn(
+                      'h-1 flex-1 rounded-full transition-colors duration-200',
+                      i <= stageIndex ? 'bg-primary' : 'bg-border-strong/60',
+                    )}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-1">
+                {STAGES.map((s, i) => (
+                  <span
+                    key={s.key}
+                    className={cn(
+                      'flex-1 font-mono text-[0.6875rem] uppercase tracking-[0.12em] transition-colors',
+                      i === stageIndex
+                        ? 'font-medium text-foreground'
+                        : i < stageIndex
+                          ? 'text-primary'
+                          : 'text-muted-foreground/60',
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                ))}
+              </div>
             </div>
 
-            <Card className="shadow-lg">
+            <Card>
               <CardHeader>
-                <div className="flex flex-wrap items-center gap-2 mb-2">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                   {current.problem.platform && (
                     <Badge className={getPlatformColor(current.problem.platform)}>
                       {current.problem.platform}
@@ -243,7 +265,9 @@ export default function RecallSessionPage() {
                     </Badge>
                   )}
                 </div>
-                <CardTitle className="text-2xl">{current.problem.title}</CardTitle>
+                <CardTitle className="font-display text-2xl">
+                  {formatProblemTitle(current.problem.title)}
+                </CardTitle>
               </CardHeader>
 
               <CardContent className="space-y-6">
@@ -256,7 +280,7 @@ export default function RecallSessionPage() {
                       value={patternGuess}
                       onChange={(e) => setPatternGuess(e.target.value)}
                       disabled={patternRevealed}
-                      className="flex h-11 w-full rounded-lg border-2 border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex h-11 w-full rounded-md border border-input bg-surface px-3 text-sm transition-colors hover:border-border-strong"
                     >
                       <option value="">I&apos;m not sure yet...</option>
                       {PATTERNS.map((p) => (
@@ -273,11 +297,9 @@ export default function RecallSessionPage() {
                       </Button>
                     ) : (
                       <div className="space-y-4">
-                        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                            Stored pattern
-                          </p>
-                          <p className="text-lg font-bold">
+                        <div className="surface-panel p-4">
+                          <p className="eyebrow mb-1">Stored pattern</p>
+                          <p className="font-display text-lg font-semibold text-primary">
                             {patternLabel(current.problem.pattern)}
                           </p>
                         </div>
@@ -290,7 +312,7 @@ export default function RecallSessionPage() {
                               <Button
                                 variant="outline"
                                 onClick={() => setPatternRecognized(true)}
-                                className="border-green-500/40 text-green-600 dark:text-green-400 hover:bg-green-500/10"
+                                className="border-primary/40 text-primary hover:bg-primary/10"
                               >
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Yes
@@ -298,7 +320,7 @@ export default function RecallSessionPage() {
                               <Button
                                 variant="outline"
                                 onClick={() => setPatternRecognized(false)}
-                                className="border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                                className="border-destructive/40 text-destructive hover:bg-destructive/10"
                               >
                                 <XCircle className="h-4 w-4 mr-2" />
                                 No
@@ -343,9 +365,9 @@ export default function RecallSessionPage() {
                         {hints.slice(0, hintsRevealed).map((hint, i) => (
                           <div
                             key={i}
-                            className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-sm"
+                            className="rounded-md border border-warning/30 bg-warning/[0.07] p-3 text-sm"
                           >
-                            <span className="font-semibold text-yellow-700 dark:text-yellow-400 mr-2">
+                            <span className="mr-2 font-mono text-xs font-semibold uppercase tracking-wider text-warning">
                               Hint {i + 1}
                             </span>
                             {hint}
@@ -364,40 +386,32 @@ export default function RecallSessionPage() {
                         {note && (note.keyIdea || note.approach || note.edgeCases || note.complexity) ? (
                           <div className="space-y-3">
                             {note.keyIdea && (
-                              <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                  Key idea
-                                </p>
+                              <div className="surface-panel p-4">
+                                <p className="eyebrow mb-1.5">Key idea</p>
                                 <p className="text-sm whitespace-pre-wrap">{note.keyIdea}</p>
                               </div>
                             )}
                             {note.approach && (
-                              <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                  Approach / validation
-                                </p>
+                              <div className="surface-panel p-4">
+                                <p className="eyebrow mb-1.5">Approach / validation</p>
                                 <p className="text-sm whitespace-pre-wrap">{note.approach}</p>
                               </div>
                             )}
                             {note.edgeCases && (
-                              <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                  Edge cases
-                                </p>
+                              <div className="surface-panel p-4">
+                                <p className="eyebrow mb-1.5">Edge cases</p>
                                 <p className="text-sm whitespace-pre-wrap">{note.edgeCases}</p>
                               </div>
                             )}
                             {note.complexity && (
-                              <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                  Complexity
-                                </p>
+                              <div className="surface-panel p-4">
+                                <p className="eyebrow mb-1.5">Complexity</p>
                                 <p className="text-sm">{note.complexity}</p>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                          <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
                             No recall note yet for this problem. After the session, open the
                             problem and write down the key idea, validation function, and edge
                             cases, and future recall sessions get much more useful.
@@ -427,11 +441,11 @@ export default function RecallSessionPage() {
                         {code === null ? (
                           <Skeleton className="h-48 w-full rounded-lg" />
                         ) : code ? (
-                          <div className="rounded-lg overflow-hidden border border-border/50 max-h-96 overflow-y-auto">
+                          <div className="max-h-96 overflow-y-auto overflow-hidden rounded-md border border-border">
                             <CodeViewer code={code} language={current.problem.language} />
                           </div>
                         ) : (
-                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                          <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
                             Could not load the solution file from GitHub.
                           </div>
                         )}
@@ -456,7 +470,7 @@ export default function RecallSessionPage() {
                         onChange={(e) => setExplanation(e.target.value)}
                         rows={3}
                         placeholder="e.g. We binary search the eating speed because increasing speed monotonically decreases required hours..."
-                        className="w-full rounded-lg border-2 border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-colors hover:border-border-strong"
                       />
                     </div>
 

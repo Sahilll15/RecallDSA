@@ -50,18 +50,18 @@ export function AttemptHistory({ attempts }: { attempts: AttemptData[] }) {
             </Badge>
             {attempt.patternRecognized !== null &&
               (attempt.patternRecognized ? (
-                <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                <span className="flex items-center gap-1 text-primary">
                   <CheckCircle className="h-3.5 w-3.5" />
                   Pattern
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                <span className="flex items-center gap-1 text-destructive">
                   <XCircle className="h-3.5 w-3.5" />
                   Pattern
                 </span>
               ))}
             {attempt.hintsUsed > 0 && (
-              <span className="flex items-center gap-1 text-yellow-700 dark:text-yellow-400">
+              <span className="flex items-center gap-1 text-warning">
                 <Lightbulb className="h-3.5 w-3.5" />
                 {attempt.hintsUsed} hint{attempt.hintsUsed === 1 ? '' : 's'}
               </span>

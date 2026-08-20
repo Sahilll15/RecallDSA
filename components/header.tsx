@@ -26,36 +26,45 @@ export function Header({
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between">
-        <div className="flex items-center gap-6">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+      <div className="container flex h-14 items-center justify-between gap-4">
+        <div className="flex items-center gap-7">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 transition-colors hover:text-foreground"
+            className="flex items-center gap-2 rounded-md transition-opacity hover:opacity-80"
           >
-            <div className="flex items-center justify-center w-7 h-7 rounded-md border border-primary/30 bg-primary/10">
-              <Code2 className="h-4 w-4 text-primary" />
-            </div>
-            <span className="font-mono font-semibold text-base text-foreground tracking-tight">
-              recalldsa<span className="text-primary cursor-blink">_</span>
+            <span className="flex h-6 w-6 items-center justify-center rounded border border-primary/40 bg-primary/10">
+              <Code2 className="h-3.5 w-3.5 text-primary" />
+            </span>
+            <span className="font-mono text-sm font-semibold tracking-tight text-foreground">
+              recalldsa<span className="cursor-blink text-primary">_</span>
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  'relative px-3 py-1.5 text-sm font-medium transition-colors rounded-md',
-                  pathname === link.href
-                    ? 'text-foreground bg-accent'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+          {/* Active route gets a rule under it, not a filled pill: the nav stays
+              quiet next to the page's own primary action. */}
+          <nav className="hidden items-center gap-6 md:flex">
+            {links.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'relative -my-4 flex h-14 items-center text-sm transition-colors',
+                    active
+                      ? 'font-medium text-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {link.label}
+                  {active && (
+                    <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -63,7 +72,7 @@ export function Header({
             must not depend on a `user` prop most pages never pass. */}
         <div className="flex items-center gap-2">
           {user && (
-            <span className="hidden sm:inline-block text-xs text-muted-foreground px-2.5 py-1 bg-muted/50 rounded-md">
+            <span className="hidden rounded-md border border-border px-2 py-1 font-mono text-xs text-muted-foreground sm:inline-block">
               {user.name || user.email}
             </span>
           )}
@@ -97,7 +106,7 @@ export function Header({
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.15 }}
-            className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-md"
+            className="overflow-hidden border-t border-border bg-background md:hidden"
           >
             <nav className="container flex flex-col gap-1 py-3">
               {links.map((link) => (
@@ -106,9 +115,9 @@ export function Header({
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    'px-3 py-2 text-sm font-medium transition-colors rounded-md',
+                    'flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
                     pathname === link.href
-                      ? 'bg-accent text-foreground'
+                      ? 'bg-accent font-medium text-foreground'
                       : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
                   )}
                 >

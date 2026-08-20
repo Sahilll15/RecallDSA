@@ -28,6 +28,7 @@ interface Problem {
   language: string | null
   path: string
   updatedAt: string
+  fileCount?: number
   revisions: any[]
 }
 
@@ -132,17 +133,21 @@ export default function ProblemsPage() {
       <AnimatedBackground />
       <Header />
       
-      <main className="container relative mx-auto px-4 py-8 space-y-8">
+      <main className="container relative mx-auto max-w-6xl space-y-7 px-4 py-10">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-border pb-6"
         >
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-1.5">Problems</h1>
-            <p className="text-muted-foreground">
-              Your synced library. Track a problem to put it on the recall schedule.
+          <div className="space-y-2">
+            <p className="eyebrow">Library</p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              Problems
+            </h1>
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Your synced library, one row per problem. Track a problem to put it on the
+              recall schedule.
             </p>
           </div>
           {repos.length > 0 && (
@@ -152,8 +157,8 @@ export default function ProblemsPage() {
               variant="outline"
               className="shrink-0"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Syncing...' : 'Sync from GitHub'}
+              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing' : 'Sync from GitHub'}
             </Button>
           )}
         </motion.div>
@@ -167,34 +172,43 @@ export default function ProblemsPage() {
             <Alert className="border-success/50 bg-success/5">
               <CheckCircle className="h-4 w-4 text-success" />
               <AlertDescription>
-                Sync completed: <strong>{syncResult.added}</strong> problems added, 
-                <strong> {syncResult.updated}</strong> updated out of <strong>{syncResult.total}</strong> code files
+                Synced <strong data-numeric>{syncResult.total}</strong> code files:{' '}
+                <strong data-numeric>{syncResult.added}</strong> added,{' '}
+                <strong data-numeric>{syncResult.updated}</strong> updated
+                {syncResult.scheduled > 0 && (
+                  <>
+                    , <strong data-numeric>{syncResult.scheduled}</strong> queued for recall
+                  </>
+                )}
+                {syncResult.duplicatesSkipped > 0 && (
+                  <>
+                    . <strong data-numeric>{syncResult.duplicatesSkipped}</strong> file
+                    {syncResult.duplicatesSkipped === 1 ? '' : 's'} skipped as another copy of a
+                    problem already queued
+                  </>
+                )}
               </AlertDescription>
             </Alert>
           </motion.div>
         )}
 
-        <Card className="shadow-md">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Filter className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Filters</CardTitle>
-                <CardDescription>Refine your problem search</CardDescription>
-              </div>
-            </div>
+        <Card>
+          <CardHeader className="pb-4">
+            <p className="eyebrow flex items-center gap-1.5">
+              <Filter className="h-3.5 w-3.5 text-primary" />
+              Filters
+            </p>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search problems..."
+                  placeholder="Search problems"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-9"
+                  aria-label="Search problems"
                 />
               </div>
 

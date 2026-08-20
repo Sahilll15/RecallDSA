@@ -20,7 +20,7 @@ export function CodeViewer({
         >
           {tokens.map((line, i) => (
             <div key={i} {...getLineProps({ line })}>
-              <span className="inline-block w-8 text-right mr-4 text-gray-500">
+              <span className="mr-4 inline-block w-8 text-right text-muted-foreground/60">
                 {i + 1}
               </span>
               {line.map((token, key) => (
