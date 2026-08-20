@@ -57,20 +57,24 @@ export async function fetchLeetCodeProblem(
       signal: AbortSignal.timeout(10_000),
     });
 
-    if (res.ok) {
-      const json = await res.json();
-      const q = json?.data?.question;
-      if (q) {
-        value = {
-          number: q.questionFrontendId ?? null,
-          title: q.title ?? titleSlug,
-          titleSlug: q.titleSlug ?? titleSlug,
-          difficulty: typeof q.difficulty === 'string' ? q.difficulty.toLowerCase() : null,
-          contentHtml: q.content ?? null,
-          tags: Array.isArray(q.topicTags) ? q.topicTags.map((t: any) => t.slug) : [],
-          hints: Array.isArray(q.hints) ? q.hints : [],
-        };
-      }
+    if (!res.ok) {
+      // A rate limit or a transient 5xx is not "this problem does not exist" —
+      // caching it here would hide the problem's statement for CACHE_TTL_MS.
+      return null;
+    }
+
+    const json = await res.json();
+    const q = json?.data?.question;
+    if (q) {
+      value = {
+        number: q.questionFrontendId ?? null,
+        title: q.title ?? titleSlug,
+        titleSlug: q.titleSlug ?? titleSlug,
+        difficulty: typeof q.difficulty === 'string' ? q.difficulty.toLowerCase() : null,
+        contentHtml: q.content ?? null,
+        tags: Array.isArray(q.topicTags) ? q.topicTags.map((t: any) => t.slug) : [],
+        hints: Array.isArray(q.hints) ? q.hints : [],
+      };
     }
   } catch {
     // A network failure must not be cached as "this problem does not exist".
@@ -81,22 +85,3 @@ export async function fetchLeetCodeProblem(
   return value;
 }
 
-/** Runs `worker` over `items` with a small concurrency cap, preserving order. */
-export async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  worker: (item: T, index: number) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let cursor = 0;
-
-  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor++;
-      results[index] = await worker(items[index], index);
-    }
-  });
-
-  await Promise.all(runners);
-  return results;
-}
