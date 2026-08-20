@@ -25,6 +25,15 @@ describe('sanitizeStatementHtml', () => {
     );
   });
 
+  it('refuses a javascript: url with a control character hidden inside the scheme', () => {
+    expect(sanitizeStatementHtml('<a href="java\tscript:alert(1)">x</a>')).toBe(
+      '<a target="_blank" rel="noopener noreferrer">x</a>',
+    );
+    expect(sanitizeStatementHtml('<a href="\n javascript:alert(1)">x</a>')).toBe(
+      '<a target="_blank" rel="noopener noreferrer">x</a>',
+    );
+  });
+
   it('sends real links out without handing over the opener', () => {
     expect(sanitizeStatementHtml('<a href="https://leetcode.com">x</a>')).toBe(
       '<a href="https://leetcode.com" target="_blank" rel="noopener noreferrer">x</a>',

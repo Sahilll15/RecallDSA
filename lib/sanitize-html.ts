@@ -16,9 +16,12 @@ const ALLOWED_ATTRS = new Set(['href', 'src', 'alt', 'title', 'colspan', 'rowspa
 const VOID_TAGS = new Set(['br', 'img', 'hr']);
 
 function safeUrl(value: string): boolean {
-  const trimmed = value.trim().toLowerCase();
-  if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:')) return false;
-  if (trimmed.startsWith('vbscript:')) return false;
+  // Browsers strip control characters (tabs, newlines) from a URL's scheme
+  // before parsing it, so "java\tscript:" still runs as javascript: even
+  // though it would not match a plain startsWith check.
+  const scheme = value.replace(/[\x00-\x1f]/g, '').trim().toLowerCase();
+  if (scheme.startsWith('javascript:') || scheme.startsWith('data:')) return false;
+  if (scheme.startsWith('vbscript:')) return false;
   return true;
 }
 
