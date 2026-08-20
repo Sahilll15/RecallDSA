@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { fetchLeetCodeProblem, mapWithConcurrency } from '@/lib/leetcode';
+import { fetchLeetCodeProblem } from '@/lib/leetcode';
 import {
   detectPatternFromPath,
   leetCodeSlugFor,
   patternFromTags,
 } from '@/lib/pattern-detection';
+import { dedupeByCanonicalKey } from '@/lib/problem-identity';
+import { mapWithConcurrency } from '@/lib/utils';
 
 const DEFAULT_BATCH = 25;
 const MAX_BATCH = 50;
+
+/**
+ * The one definition of "still needs classification", shared by GET's count
+ * and POST's fill-only filter so the two can't silently disagree on it.
+ */
+function needsClassification(p: { pattern: string | null; difficulty: string | null }): boolean {
+  return p.pattern === null || p.difficulty === null;
+}
 
 /** How many problems still lack a pattern or a difficulty. */
 export async function GET() {
@@ -19,14 +29,21 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const where = { repo: { userId: session.user.id } };
+  // Counted per problem, not per file: a duplicate-path problem must not
+  // inflate this total relative to the dashboard's or the library's.
+  const problems = await prisma.problem.findMany({
+    where: { repo: { userId: session.user.id } },
+    select: { id: true, path: true, pattern: true, difficulty: true, updatedAt: true },
+  });
 
-  const [unclassified, total] = await Promise.all([
-    prisma.problem.count({ where: { ...where, pattern: null } }),
-    prisma.problem.count({ where }),
-  ]);
+  const distinctProblems = dedupeByCanonicalKey(problems, (p) => p.path, (a, b) =>
+    b.updatedAt > a.updatedAt ? b : a,
+  );
 
-  return NextResponse.json({ unclassified, total });
+  return NextResponse.json({
+    unclassified: distinctProblems.filter(needsClassification).length,
+    total: distinctProblems.length,
+  });
 }
 
 /**
@@ -67,9 +84,7 @@ export async function POST(request: NextRequest) {
       take: limit,
     });
 
-    const needsWork = overwrite
-      ? batch
-      : batch.filter((p) => p.pattern === null || p.difficulty === null);
+    const needsWork = overwrite ? batch : batch.filter(needsClassification);
 
     const results = await mapWithConcurrency(needsWork, 5, async (problem) => {
       const slug = leetCodeSlugFor(problem.path);

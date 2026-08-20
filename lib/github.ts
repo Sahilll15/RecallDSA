@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest"
 import { detectPattern } from "./pattern-detection"
-import { formatProblemTitle } from "./utils"
+import { formatProblemTitle, mapWithConcurrency } from "./utils"
 
 export { detectPattern }
 
@@ -97,16 +97,22 @@ export class GitHubService {
         per_page: 100,
       })
 
+      // listCommits returns newest-first, but we want each file's earliest
+      // commit, so the budget below must be spent on the oldest commits in
+      // the window, not the newest ones.
+      const oldestFirst = [...commits].reverse().slice(0, MAX_COMMITS_PER_SYNC)
+
       // Each commit costs an extra API call to read its file list, so a busy
-      // repo would otherwise burn the hourly rate limit on one sync.
-      for (const commit of commits.slice(0, MAX_COMMITS_PER_SYNC)) {
+      // repo would otherwise burn the hourly rate limit on one sync; running
+      // them one at a time also risked the function's own execution timeout.
+      await mapWithConcurrency(oldestFirst, 8, async (commit) => {
         const detail = await this.octokit.repos.getCommit({
           owner,
           repo,
           ref: commit.sha,
         })
         const date = detail.data.commit.author?.date
-        if (!date) continue
+        if (!date) return
         const commitDate = new Date(date)
 
         for (const file of detail.data.files ?? []) {
@@ -116,7 +122,7 @@ export class GitHubService {
             solvedAt.set(file.filename, commitDate)
           }
         }
-      }
+      })
     } catch (error) {
       console.error(`Failed to read commit history for ${owner}/${repo}:`, error)
     }
