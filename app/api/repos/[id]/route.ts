@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { repoHasNoHistory } from '@/lib/problem-lifecycle';
 
 export async function GET(
   request: NextRequest,
@@ -66,6 +67,16 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Repository not found' },
         { status: 404 },
+      );
+    }
+
+    // The cascade from Repo wipes every Problem beneath it, and Problem
+    // cascades further to Revision/Attempt/Mistake/RecallNote. Refuse rather
+    // than silently destroying review history that cannot be recreated.
+    if (!(await repoHasNoHistory(id))) {
+      return NextResponse.json(
+        { error: 'This repository has tracked review history and cannot be deleted' },
+        { status: 409 },
       );
     }
 

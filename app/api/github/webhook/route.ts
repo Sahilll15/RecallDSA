@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { parseProblemInfo, isCodeFile } from '@/lib/github';
 import { initialSchedulingState, nextDateFrom } from '@/lib/spaced-repetition';
 import { canonicalProblemKey } from '@/lib/problem-identity';
+import { deleteHistorylessProblems } from '@/lib/problem-lifecycle';
 import crypto from 'crypto';
 
 function verifySignature(
@@ -152,30 +153,12 @@ export async function POST(request: NextRequest) {
       }
 
       if (removedFiles.size > 0) {
-        // Same guard as repo sync: a deleted file must not take the review
-        // history of its problem with it.
-        const candidates = await prisma.problem.findMany({
-          where: { repoId: repo.id, path: { in: [...removedFiles] } },
-          select: {
-            id: true,
-            _count: { select: { revisions: true, attempts: true, mistakes: true } },
-            recallNote: { select: { id: true } },
-          },
+        // A deleted file must not take the review history of its problem with
+        // it; deleteHistorylessProblems only removes rows carrying nothing.
+        await deleteHistorylessProblems({
+          repoId: repo.id,
+          path: { in: [...removedFiles] },
         });
-
-        const disposable = candidates.filter(
-          (p) =>
-            p._count.revisions === 0 &&
-            p._count.attempts === 0 &&
-            p._count.mistakes === 0 &&
-            p.recallNote === null,
-        );
-
-        if (disposable.length > 0) {
-          await prisma.problem.deleteMany({
-            where: { id: { in: disposable.map((p) => p.id) } },
-          });
-        }
       }
     }
 
