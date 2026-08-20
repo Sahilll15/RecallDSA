@@ -1,4 +1,8 @@
 import { Octokit } from "@octokit/rest"
+import { detectPattern } from "./pattern-detection"
+import { formatProblemTitle } from "./utils"
+
+export { detectPattern }
 
 export class GitHubService {
   private octokit: Octokit
@@ -93,7 +97,9 @@ export class GitHubService {
         per_page: 100,
       })
 
-      for (const commit of commits) {
+      // Each commit costs an extra API call to read its file list, so a busy
+      // repo would otherwise burn the hourly rate limit on one sync.
+      for (const commit of commits.slice(0, MAX_COMMITS_PER_SYNC)) {
         const detail = await this.octokit.repos.getCommit({
           owner,
           repo,
@@ -118,6 +124,9 @@ export class GitHubService {
     return solvedAt
   }
 }
+
+/** Commits examined per solve-date lookup, to bound the API cost of a sync. */
+const MAX_COMMITS_PER_SYNC = 300
 
 export function parseRepoFullName(fullName: string): { owner: string; repo: string } {
   const [owner, repo] = fullName.split("/")
@@ -146,47 +155,6 @@ export function getLanguageFromExtension(filename: string): string | null {
   return ext ? langMap[ext] || ext : null
 }
 
-const PATTERN_KEYWORDS: Array<[string, string[]]> = [
-  ["binary-search-on-answer", ["binary-search-on-answer", "bs-on-answer", "search-on-answer"]],
-  ["binary-search", ["binary-search", "binarysearch", "binary_search"]],
-  ["two-pointers", ["two-pointer", "twopointer", "two_pointer"]],
-  ["sliding-window", ["sliding-window", "slidingwindow", "sliding_window"]],
-  ["prefix-sum", ["prefix-sum", "prefixsum", "prefix_sum"]],
-  ["monotonic-stack", ["monotonic-stack", "monotonicstack", "monotonic_stack"]],
-  ["linked-list", ["linked-list", "linkedlist", "linked_list"]],
-  ["dynamic-programming", ["dynamic-programming", "dp/", "/dp", "\\dp", "dynamicprogramming"]],
-  ["backtracking", ["backtracking", "backtrack"]],
-  ["topological-sort", ["topological", "toposort"]],
-  ["union-find", ["union-find", "unionfind", "disjoint-set", "dsu"]],
-  ["bit-manipulation", ["bit-manipulation", "bitmanip", "bitwise", "bit_manipulation"]],
-  ["intervals", ["interval"]],
-  ["recursion", ["recursion", "recursive"]],
-  ["hashing", ["hashing", "hashmap", "hash-map", "hash_map", "hashtable"]],
-  ["greedy", ["greedy"]],
-  ["sorting", ["sorting", "/sort", "\\sort"]],
-  ["heap", ["heap", "priority-queue", "priorityqueue", "priority_queue"]],
-  ["trie", ["trie"]],
-  ["bst", ["/bst", "\\bst", "binary-search-tree"]],
-  ["trees", ["tree"]],
-  ["graphs", ["graph"]],
-  ["bfs", ["/bfs", "\\bfs", "breadth-first"]],
-  ["dfs", ["/dfs", "\\dfs", "depth-first"]],
-  ["matrix", ["matrix", "/grid", "\\grid"]],
-  ["queue", ["queue"]],
-  ["stack", ["stack"]],
-  ["strings", ["string"]],
-  ["math", ["/math", "\\math"]],
-  ["arrays", ["array"]],
-]
-
-export function detectPattern(path: string): string | null {
-  const pathLower = path.toLowerCase()
-  for (const [pattern, keywords] of PATTERN_KEYWORDS) {
-    if (keywords.some((kw) => pathLower.includes(kw))) return pattern
-  }
-  return null
-}
-
 export function parseProblemInfo(path: string, filename: string) {
   const pathLower = path.toLowerCase()
 
@@ -205,13 +173,16 @@ export function parseProblemInfo(path: string, filename: string) {
   
   const nameWithoutExt = filename.replace(/\.[^/.]+$/, "")
   // LeetHub-style names lead with the problem number: "0001-two-sum" -> "Two Sum"
-  const title = nameWithoutExt
-    .replace(/^\d+[-_.\s]+/, "")
-    .replace(/[-_]/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .split(" ")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+  const title = formatProblemTitle(
+    nameWithoutExt
+      .replace(/^\d+[-_.\s]+/, "")
+      .replace(/[-_]/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .split(" ")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" "),
+  )
   
   const language = getLanguageFromExtension(filename)
   const pattern = detectPattern(path)
