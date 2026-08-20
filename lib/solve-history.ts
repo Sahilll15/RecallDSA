@@ -1,4 +1,5 @@
 import { FIRST_INTERVAL_DAYS, nextDateFrom } from './spaced-repetition';
+import { canonicalProblemKey, dedupeByCanonicalKey } from './problem-identity';
 
 export interface SolvedProblem {
   id: string;
@@ -6,48 +7,14 @@ export interface SolvedProblem {
   solvedAt: Date;
 }
 
-function slugify(segment: string): string {
-  return segment
-    .replace(/\.[^/.]+$/, '')
-    .toLowerCase()
-    .replace(/^\d+[-_.\s]+/, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-/**
- * Identity of a problem regardless of which extension wrote it. LeetHub and
- * LeetSync commit the same solution under different folder and file namings
- * (and sometimes different problem numbers), which would otherwise queue the
- * same problem for review two or three times.
- */
-export function canonicalProblemKey(path: string): string {
-  const segments = path.split('/').filter(Boolean);
-  const filename = segments.pop() ?? path;
-  const directory = segments.pop();
-
-  const dirKey = directory ? slugify(directory) : '';
-  const fileKey = slugify(filename);
-
-  // The directory names the problem; the filename is often generic (Solution.java).
-  if (dirKey) return dirKey;
-  return fileKey;
-}
-
 /** One entry per problem, keeping the copy that was solved first. */
 export function dedupeSolvedProblems(problems: SolvedProblem[]): SolvedProblem[] {
-  const byKey = new Map<string, SolvedProblem>();
-
-  for (const problem of problems) {
-    const key = canonicalProblemKey(problem.path);
-    const existing = byKey.get(key);
-    if (!existing || problem.solvedAt < existing.solvedAt) {
-      byKey.set(key, problem);
-    }
-  }
-
-  return [...byKey.values()];
+  return dedupeByCanonicalKey(problems, (p) => p.path, (a, b) =>
+    b.solvedAt < a.solvedAt ? b : a,
+  );
 }
+
+export { canonicalProblemKey };
 
 /**
  * First review lands a day after the solve. A solve older than that is simply

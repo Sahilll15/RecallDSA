@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { GitHubService, parseRepoFullName, parseProblemInfo, isCodeFile } from "@/lib/github"
 import { initialSchedulingState, nextDateFrom } from "@/lib/spaced-repetition"
 import { SOLVE_HISTORY_DAYS } from "@/lib/constants"
+import { canonicalProblemKey } from "@/lib/problem-identity"
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -56,9 +57,20 @@ export async function POST(request: NextRequest) {
     // revisions, so only files added on later syncs get auto-scheduled.
     const autoSchedule = existingProblems.length > 0
 
+    const trackedRevisions = await prisma.revision.findMany({
+      where: { userId: session.user.id },
+      select: { problem: { select: { path: true } } },
+    })
+    // Another extension committing the same problem under a different path must
+    // not add a second card to the queue.
+    const queuedKeys = new Set(
+      trackedRevisions.map((r) => canonicalProblemKey(r.problem.path))
+    )
+
     let added = 0
     let updated = 0
     let scheduled = 0
+    let duplicatesSkipped = 0
 
     for (const file of codeFiles) {
       if (!file.path || !file.sha) continue
@@ -93,6 +105,8 @@ export async function POST(request: NextRequest) {
         }
       } else {
         const fresh = initialSchedulingState()
+        const canonicalKey = canonicalProblemKey(file.path)
+        const queueThisFile = autoSchedule && !queuedKeys.has(canonicalKey)
         await prisma.problem.create({
           data: {
             repoId: repo.id,
@@ -104,7 +118,7 @@ export async function POST(request: NextRequest) {
             language,
             pattern,
             solvedAt,
-            ...(autoSchedule
+            ...(queueThisFile
               ? {
                   revisions: {
                     create: {
@@ -118,7 +132,12 @@ export async function POST(request: NextRequest) {
           },
         })
         added++
-        if (autoSchedule) scheduled++
+        if (queueThisFile) {
+          queuedKeys.add(canonicalKey)
+          scheduled++
+        } else if (autoSchedule) {
+          duplicatesSkipped++
+        }
       }
     }
 
@@ -130,7 +149,14 @@ export async function POST(request: NextRequest) {
       where: { repoId: repo.id, path: { in: stalePaths } },
     })
 
-    return NextResponse.json({ added, updated, removed, scheduled, total: codeFiles.length })
+    return NextResponse.json({
+      added,
+      updated,
+      removed,
+      scheduled,
+      duplicatesSkipped,
+      total: codeFiles.length,
+    })
   } catch (error) {
     console.error("Failed to sync repo:", error)
     return NextResponse.json({ error: "Failed to sync repository" }, { status: 500 })

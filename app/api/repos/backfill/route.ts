@@ -8,6 +8,7 @@ import {
   scheduleFromSolveDate,
   type SolvedProblem,
 } from '@/lib/solve-history';
+import { canonicalProblemKey } from '@/lib/problem-identity';
 
 /** Schedules problems solved in the last N days, anchored to when they were solved. */
 export async function POST(request: NextRequest) {
@@ -68,13 +69,19 @@ export async function POST(request: NextRequest) {
     const deduped = dedupeSolvedProblems(candidates);
     const byId = new Map(problems.map((p) => [p.id, p]));
 
+    // Matching on problem id alone would re-queue a problem that is already
+    // tracked under a different path, so compare problem identity instead.
     const alreadyTracked = await prisma.revision.findMany({
-      where: { userId: session.user.id, problemId: { in: deduped.map((p) => p.id) } },
-      select: { problemId: true },
+      where: { userId: session.user.id },
+      select: { problem: { select: { path: true } } },
     });
-    const trackedIds = new Set(alreadyTracked.map((r) => r.problemId));
+    const trackedKeys = new Set(
+      alreadyTracked.map((r) => canonicalProblemKey(r.problem.path)),
+    );
 
-    const toSchedule = deduped.filter((p) => !trackedIds.has(p.id));
+    const toSchedule = deduped.filter(
+      (p) => !trackedKeys.has(canonicalProblemKey(p.path)),
+    );
 
     await prisma.$transaction(
       toSchedule.map((problem) => {

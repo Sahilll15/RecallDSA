@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { groupByCanonicalKey } from "@/lib/problem-identity"
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -50,31 +51,48 @@ export async function GET(request: NextRequest) {
       where.pattern = pattern
     }
 
-    const [problems, total] = await Promise.all([
-      prisma.problem.findMany({
-        where,
-        include: {
-          repo: {
-            select: {
-              fullName: true,
-              defaultBranch: true,
-            },
-          },
-          revisions: {
-            where: { userId: session.user.id },
-            select: {
-              id: true,
-              nextDate: true,
-              lastRevised: true,
-            },
+    // The library lists one row per problem. Two files for the same problem
+    // collapse into a single row that reports how many files back it, so the
+    // count here matches the count everywhere else in the product.
+    const matching = await prisma.problem.findMany({
+      where,
+      include: {
+        repo: {
+          select: {
+            fullName: true,
+            defaultBranch: true,
           },
         },
-        orderBy: { updatedAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.problem.count({ where }),
-    ])
+        revisions: {
+          where: { userId: session.user.id },
+          select: {
+            id: true,
+            nextDate: true,
+            lastRevised: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    })
+
+    const grouped = groupByCanonicalKey(matching, (p) => p.path)
+
+    const collapsed = [...grouped.values()].map((files) => {
+      // Prefer the copy already being revised, then the most recently touched.
+      const primary =
+        files.find((f) => f.revisions.length > 0) ?? files[0]
+
+      return {
+        ...primary,
+        fileCount: files.length,
+        alternatePaths: files.filter((f) => f.id !== primary.id).map((f) => f.path),
+      }
+    })
+
+    collapsed.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+
+    const total = collapsed.length
+    const problems = collapsed.slice((page - 1) * limit, page * limit)
 
     return NextResponse.json({
       problems,

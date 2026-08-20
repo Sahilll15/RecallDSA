@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendRevisionReminder } from "@/lib/email"
+import { dedupeRevisionQueue } from "@/lib/revision-queue"
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization")
@@ -38,10 +39,16 @@ export async function POST(request: NextRequest) {
 
     let emailsSent = 0
 
-    for (const revisions of userRevisionsMap.values()) {
-      const user = revisions[0].user
-      
+    let totalDue = 0
+
+    for (const allForUser of userRevisionsMap.values()) {
+      const user = allForUser[0].user
+
       if (!user.email) continue
+
+      // The reminder lists each problem once, not once per file on disk.
+      const revisions = dedupeRevisionQueue(allForUser)
+      totalDue += revisions.length
 
       const problems = revisions.map((r) => ({
         title: r.problem.title,
@@ -60,7 +67,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       usersNotified: emailsSent,
-      totalRevisions: dueRevisions.length,
+      totalRevisions: totalDue,
     })
   } catch (error) {
     console.error("Cron job error:", error)

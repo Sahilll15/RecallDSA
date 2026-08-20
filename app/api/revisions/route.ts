@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { initialSchedulingState, nextDateFrom } from "@/lib/spaced-repetition"
+import { dedupeRevisionQueue } from "@/lib/revision-queue"
+import { canonicalProblemKey } from "@/lib/problem-identity"
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -49,7 +51,8 @@ export async function GET(request: NextRequest) {
       orderBy: { nextDate: "asc" },
     })
 
-    return NextResponse.json(revisions)
+    // The same problem can exist under several paths; the queue shows it once.
+    return NextResponse.json(dedupeRevisionQueue(revisions))
   } catch (error) {
     console.error("Failed to fetch revisions:", error)
     return NextResponse.json({ error: "Failed to fetch revisions" }, { status: 500 })
@@ -77,6 +80,20 @@ export async function POST(request: NextRequest) {
 
     if (!problem || problem.repo.userId !== session.user.id) {
       return NextResponse.json({ error: "Problem not found" }, { status: 404 })
+    }
+
+    // A sibling file of the same problem already in the queue means this is a
+    // duplicate, not a new card.
+    const tracked = await prisma.revision.findMany({
+      where: { userId: session.user.id, problemId: { not: problemId } },
+      select: { id: true, problem: { select: { path: true } } },
+    })
+    const key = canonicalProblemKey(problem.path)
+    const sibling = tracked.find((r) => canonicalProblemKey(r.problem.path) === key)
+
+    if (sibling) {
+      const existing = await prisma.revision.findUnique({ where: { id: sibling.id } })
+      return NextResponse.json({ ...existing, alreadyTracked: true })
     }
 
     const fresh = initialSchedulingState()

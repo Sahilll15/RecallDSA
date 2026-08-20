@@ -2,6 +2,8 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { MASTERY_INTERVAL_DAYS } from '@/lib/spaced-repetition';
+import { dedupeByCanonicalKey } from '@/lib/problem-identity';
+import { dedupeRevisionQueue } from '@/lib/revision-queue';
 import { DashboardClient, type PatternReadiness } from './dashboard-client';
 
 export default async function DashboardPage() {
@@ -15,43 +17,52 @@ export default async function DashboardPage() {
 
   const repos = await prisma.repo.findMany({
     where: { userId },
-    include: {
-      _count: {
-        select: { problems: true },
-      },
-    },
+    select: { id: true },
   });
 
-  const totalProblems = repos.reduce(
-    (sum, repo) => sum + repo._count.problems,
-    0,
+  // Every figure below counts problems, not files: the same problem committed
+  // under two paths must not inflate any total on this page.
+  const allProblems = await prisma.problem.findMany({
+    where: { repo: { userId } },
+    select: { id: true, path: true, difficulty: true, updatedAt: true },
+  });
+
+  const distinctProblems = dedupeByCanonicalKey(
+    allProblems,
+    (p) => p.path,
+    (a, b) => (b.updatedAt > a.updatedAt ? b : a),
   );
 
-  const problemsByDifficulty = await prisma.problem.groupBy({
-    by: ['difficulty'],
-    where: { repo: { userId } },
-    _count: true,
-  });
+  const totalProblems = distinctProblems.length;
+
+  const difficultyTally = new Map<string | null, number>();
+  for (const problem of distinctProblems) {
+    difficultyTally.set(
+      problem.difficulty,
+      (difficultyTally.get(problem.difficulty) ?? 0) + 1,
+    );
+  }
+  const problemsByDifficulty = [...difficultyTally.entries()].map(
+    ([difficulty, count]) => ({ difficulty, _count: count }),
+  );
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  const [totalRevisions, dueNow, mastered, revisionsByPattern, recentAttempts, mistakeConcepts] =
+  const [allRevisions, recentAttempts, mistakeConcepts] =
     await Promise.all([
-      prisma.revision.count({ where: { userId } }),
-      prisma.revision.count({
-        where: { userId, nextDate: { lt: endOfToday } },
-      }),
-      prisma.revision.count({
-        where: { userId, intervalDays: { gte: MASTERY_INTERVAL_DAYS } },
-      }),
       prisma.revision.findMany({
         where: { userId },
         select: {
+          id: true,
+          nextDate: true,
+          lastRevised: true,
+          repetitions: true,
+          createdAt: true,
           intervalDays: true,
-          problem: { select: { pattern: true } },
+          problem: { select: { path: true, pattern: true } },
         },
       }),
       prisma.attempt.findMany({
@@ -72,6 +83,13 @@ export default async function DashboardPage() {
         take: 5,
       }),
     ]);
+
+  const revisionsByPattern = dedupeRevisionQueue(allRevisions);
+  const totalRevisions = revisionsByPattern.length;
+  const dueNow = revisionsByPattern.filter((r) => r.nextDate < endOfToday).length;
+  const mastered = revisionsByPattern.filter(
+    (r) => r.intervalDays >= MASTERY_INTERVAL_DAYS,
+  ).length;
 
   const patternMap = new Map<
     string,

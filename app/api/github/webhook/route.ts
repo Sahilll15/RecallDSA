@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseProblemInfo, isCodeFile } from '@/lib/github';
 import { initialSchedulingState, nextDateFrom } from '@/lib/spaced-repetition';
+import { canonicalProblemKey } from '@/lib/problem-identity';
 import crypto from 'crypto';
 
 function verifySignature(
@@ -75,6 +76,16 @@ export async function POST(request: NextRequest) {
           });
       }
 
+      const tracked = await prisma.revision.findMany({
+        where: { userId: repo.userId },
+        select: { problem: { select: { path: true } } },
+      });
+      // A push that adds the same problem under a second path must not create a
+      // second card.
+      const queuedKeys = new Set(
+        tracked.map((r) => canonicalProblemKey(r.problem.path)),
+      );
+
       for (const filePath of allFiles) {
         if (!isCodeFile(filePath)) continue;
 
@@ -110,8 +121,11 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        if (addedFiles.has(filePath)) {
+        const canonicalKey = canonicalProblemKey(filePath);
+
+        if (addedFiles.has(filePath) && !queuedKeys.has(canonicalKey)) {
           const fresh = initialSchedulingState();
+          queuedKeys.add(canonicalKey);
 
           await prisma.revision.upsert({
             where: {
