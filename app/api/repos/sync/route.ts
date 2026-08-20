@@ -141,12 +141,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const stalePaths = existingProblems
-      .filter((p) => !treePaths.has(p.path))
-      .map((p) => p.path)
+    // A problem row cascades to its revision, recall note, attempts and
+    // mistakes. A renamed file is a new path, so deleting on "no longer in the
+    // tree" silently destroyed the entire history of a problem whose folder was
+    // renamed. Only rows carrying nothing are safe to remove.
+    const stale = await prisma.problem.findMany({
+      where: {
+        repoId: repo.id,
+        path: { notIn: [...treePaths] },
+      },
+      select: {
+        id: true,
+        _count: {
+          select: { revisions: true, attempts: true, mistakes: true },
+        },
+        recallNote: { select: { id: true } },
+      },
+    })
+
+    const carriesHistory = (p: (typeof stale)[number]) =>
+      p._count.revisions > 0 ||
+      p._count.attempts > 0 ||
+      p._count.mistakes > 0 ||
+      p.recallNote !== null
+
+    const disposable = stale.filter((p) => !carriesHistory(p))
+    const keptWithHistory = stale.length - disposable.length
 
     const { count: removed } = await prisma.problem.deleteMany({
-      where: { repoId: repo.id, path: { in: stalePaths } },
+      where: { id: { in: disposable.map((p) => p.id) } },
     })
 
     return NextResponse.json({
@@ -155,6 +178,7 @@ export async function POST(request: NextRequest) {
       removed,
       scheduled,
       duplicatesSkipped,
+      keptWithHistory,
       total: codeFiles.length,
     })
   } catch (error) {

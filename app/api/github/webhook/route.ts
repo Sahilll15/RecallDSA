@@ -12,7 +12,13 @@ function verifySignature(
 ): boolean {
   const hmac = crypto.createHmac('sha256', secret);
   const digest = 'sha256=' + hmac.update(payload).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
+  const expected = Buffer.from(digest);
+  const received = Buffer.from(signature);
+
+  // timingSafeEqual throws on a length mismatch, which turned a malformed
+  // header into a 500 instead of a rejected request.
+  if (expected.length !== received.length) return false;
+  return crypto.timingSafeEqual(expected, received);
 }
 
 export async function POST(request: NextRequest) {
@@ -146,9 +152,30 @@ export async function POST(request: NextRequest) {
       }
 
       if (removedFiles.size > 0) {
-        await prisma.problem.deleteMany({
+        // Same guard as repo sync: a deleted file must not take the review
+        // history of its problem with it.
+        const candidates = await prisma.problem.findMany({
           where: { repoId: repo.id, path: { in: [...removedFiles] } },
+          select: {
+            id: true,
+            _count: { select: { revisions: true, attempts: true, mistakes: true } },
+            recallNote: { select: { id: true } },
+          },
         });
+
+        const disposable = candidates.filter(
+          (p) =>
+            p._count.revisions === 0 &&
+            p._count.attempts === 0 &&
+            p._count.mistakes === 0 &&
+            p.recallNote === null,
+        );
+
+        if (disposable.length > 0) {
+          await prisma.problem.deleteMany({
+            where: { id: { in: disposable.map((p) => p.id) } },
+          });
+        }
       }
     }
 
