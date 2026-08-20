@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer"
 import type { ReminderEmail } from "./streak-reminder"
+import { escapeHtml } from "./streak-reminder"
 import { resolveAppUrl } from "./app-url"
 
 /**
@@ -31,10 +32,10 @@ export async function sendRevisionReminder(
     .map(
       (p) =>
         `<li style="margin: 10px 0;">
-          <a href="${appUrl}/problems/${p.id}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
-            ${p.title}
+          <a href="${appUrl}/problems/${encodeURIComponent(p.id)}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
+            ${escapeHtml(p.title)}
           </a>
-          ${p.difficulty ? `<span style="color: #64748b; font-size: 14px;"> (${p.difficulty})</span>` : ""}
+          ${p.difficulty ? `<span style="color: #64748b; font-size: 14px;"> (${escapeHtml(p.difficulty)})</span>` : ""}
         </li>`
     )
     .join("")
@@ -53,7 +54,7 @@ export async function sendRevisionReminder(
         </div>
         
         <div style="background: white; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px;">
-          <p style="font-size: 16px; margin-top: 0;">Hi ${userName || "there"},</p>
+          <p style="font-size: 16px; margin-top: 0;">Hi ${escapeHtml(userName?.trim() || "there")},</p>
           
           <p style="font-size: 16px;">You have <strong>${problems.length}</strong> problem${problems.length > 1 ? "s" : ""} due for revision today:</p>
           
