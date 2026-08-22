@@ -35,6 +35,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "RecallDSA",
   },
+  verification: {
+    google: "91MxErQehrOqzvYAE8G4JIW62gi7KdBFUn4oDyKVB18",
+  },
 }
 
 export const viewport: Viewport = {
