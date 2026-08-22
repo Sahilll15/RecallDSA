@@ -28,13 +28,14 @@ import {
   AlertCircle,
   CheckCircle,
   Copy,
-
+  ArrowRight,
   Zap,
   Link as LinkIcon,
   Sparkles,
 } from 'lucide-react';
 import { Footer } from '@/components/footer';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 interface Repo {
   id: string;
@@ -46,36 +47,60 @@ interface Repo {
   };
 }
 
+interface AvailableRepo {
+  id: number;
+  full_name: string;
+}
+
+interface SyncResult {
+  added: number;
+  updated: number;
+  removed?: number;
+  scheduled?: number;
+}
+
 export default function SettingsPage() {
   const [repos, setRepos] = useState<Repo[]>([]);
-  const [availableRepos, setAvailableRepos] = useState<any[]>([]);
+  const [availableRepos, setAvailableRepos] = useState<AvailableRepo[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState('');
-  const [syncResult, setSyncResult] = useState<any>(null);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [reposError, setReposError] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  // A rejected/non-ok response must not collapse to "no repo connected yet":
+  // that silently steers an auth or server hiccup into the first-run setup
+  // screen instead of a visible error.
+  const fetchJsonArray = async (url: string): Promise<unknown[] | null> => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return Array.isArray(data) ? data : null;
+    } catch {
+      return null;
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     const [reposRes, availableRes] = await Promise.all([
-      fetch('/api/repos/connect')
-        .then((r) => r.json())
-        .catch(() => []),
-      fetch('/api/repos')
-        .then((r) => r.json())
-        .catch(() => []),
+      fetchJsonArray('/api/repos/connect'),
+      fetchJsonArray('/api/repos'),
     ]);
 
-    if (Array.isArray(reposRes)) {
-      setRepos(reposRes);
+    setReposError(reposRes === null);
+    if (reposRes !== null) {
+      setRepos(reposRes as Repo[]);
     }
-    if (Array.isArray(availableRes)) {
-      setAvailableRepos(availableRes);
+    if (availableRes !== null) {
+      setAvailableRepos(availableRes as AvailableRepo[]);
     }
     setLoading(false);
   };
@@ -138,33 +163,47 @@ export default function SettingsPage() {
       : 'https://recall-dsa.vercel.app/api/github/webhook';
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative flex min-h-screen flex-col">
       <AnimatedBackground />
       <Header />
 
-      <main className="container relative mx-auto px-4 py-8 max-w-4xl space-y-8">
+      <main className="container relative mx-auto max-w-4xl flex-1 space-y-8 px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="border-b border-border pb-6"
         >
-          <h1 className="text-3xl font-bold tracking-tight mb-1.5">Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your repository connection and webhook sync
+          <p className="eyebrow mb-2">Setup</p>
+          <h1 className="font-display text-3xl font-semibold tracking-tight mb-1.5">
+            Which repo holds your solved problems?
+          </h1>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            Pick one GitHub repository. RecallDSA imports code files immediately, then
+            you choose the first problems to add to recall.
           </p>
         </motion.div>
 
-        <Card className="shadow-lg hover:shadow-xl transition-shadow">
+        <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-xl">
+              <div className="p-3 bg-primary-soft rounded-md">
                 <Github className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-xl">Connected Repository</CardTitle>
+                <CardTitle className="text-xl">
+                  {reposError
+                    ? "Couldn't check your repository"
+                    : connectedRepo
+                      ? 'Repository connected'
+                      : 'Choose one repository'}
+                </CardTitle>
                 <CardDescription>
-                  Link your DSA GitHub repository to start tracking
+                  {reposError
+                    ? 'This looks like a temporary loading error, not an unconnected repo.'
+                    : connectedRepo
+                      ? 'Your queue can now stay in sync with this source.'
+                      : 'This is the only setup question needed for the first import.'}
                 </CardDescription>
               </div>
             </div>
@@ -181,9 +220,25 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <Skeleton className="h-24 w-full rounded-xl" />
               </div>
+            ) : reposError ? (
+              <div className="space-y-4">
+                <div className="rounded-[var(--radius)] border border-destructive/25 bg-destructive/5 p-5 text-center">
+                  <AlertCircle className="mx-auto mb-3 h-8 w-8 text-destructive" />
+                  <p className="font-display text-base font-semibold">
+                    Couldn&apos;t load your repository status.
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    This is a loading error, not a sign you need to reconnect anything.
+                  </p>
+                </div>
+                <Button size="lg" onClick={fetchData}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try again
+                </Button>
+              </div>
             ) : connectedRepo ? (
               <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
+                <div className="relative overflow-hidden rounded-[var(--radius)] border border-primary/25 bg-primary-soft p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -223,25 +278,44 @@ export default function SettingsPage() {
                 {syncResult && (
                   <Alert variant="success">
                     <CheckCircle className="h-4 w-4" />
-                    <AlertTitle>Sync completed successfully!</AlertTitle>
+                    <AlertTitle>Import complete</AlertTitle>
                     <AlertDescription>
                       Added {syncResult.added} new problems, updated {syncResult.updated}
                       {typeof syncResult.removed === 'number' && syncResult.removed > 0
                         ? `, removed ${syncResult.removed} deleted from the repo`
                         : ''}
+                      {typeof syncResult.scheduled === 'number' && syncResult.scheduled > 0
+                        ? `, queued ${syncResult.scheduled} for recall`
+                        : ''}
                     </AlertDescription>
                   </Alert>
                 )}
 
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Link href="/problems">
+                    <Button size="lg" className="group w-full sm:w-auto">
+                      Track imported problems
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </Button>
+                  </Link>
+                  <Link href="/revision">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                      Open revision queue
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="text-center py-8">
-                  <div className="mx-auto w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <div className="rounded-[var(--radius)] border border-border bg-surface-raised p-5">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md border border-border bg-background">
                     <Github className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    No repository connected yet. Select one below to get started
+                  <p className="font-display text-base font-semibold">
+                    Connect the repo where you push accepted solutions.
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Import runs after connection, so the next screen can be your problem library.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -250,7 +324,7 @@ export default function SettingsPage() {
                     onChange={(e) => setSelectedRepo(e.target.value)}
                     className="flex-1"
                   >
-                    <option value="">Select a repository...</option>
+                    <option value="">Select a repository</option>
                     {availableRepos.map((repo) => (
                       <option key={repo.id} value={repo.full_name}>
                         {repo.full_name}
@@ -264,7 +338,7 @@ export default function SettingsPage() {
                     className="group whitespace-nowrap"
                   >
                     <Github className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-                    {connecting ? 'Connecting...' : 'Connect Repository'}
+                    {connecting ? 'Importing...' : 'Connect and import'}
                   </Button>
                 </div>
               </div>
@@ -273,23 +347,24 @@ export default function SettingsPage() {
         </Card>
 
         {connectedRepo && (
-          <Card className="shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg border border-info/25 bg-info/10 p-2.5">
+          <details className="rounded-[var(--radius)] border border-border bg-surface">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
+              <span className="flex items-center gap-3">
+                <span className="rounded-md border border-info/25 bg-info-soft p-2.5">
                   <Zap className="h-5 w-5 text-info" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl">
-                    GitHub Webhook Setup
-                  </CardTitle>
-                  <CardDescription>
-                    Enable automatic sync on every push
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
+                </span>
+                <span>
+                  <span className="block font-display text-base font-semibold">
+                    Advanced: automatic sync on push
+                  </span>
+                  <span className="block text-sm text-muted-foreground">
+                    Optional webhook setup after the first queue is working.
+                  </span>
+                </span>
+              </span>
+              <Badge variant="outline">Optional</Badge>
+            </summary>
+            <div className="space-y-6 border-t border-border p-5">
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Setup Instructions</AlertTitle>
@@ -366,8 +441,8 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </details>
         )}
       </main>
 

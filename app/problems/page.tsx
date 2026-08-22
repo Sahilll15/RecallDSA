@@ -12,12 +12,23 @@ import { Button } from '@/components/ui/button'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { getDifficultyColor, getPlatformColor, formatDate } from '@/lib/utils'
 import { PATTERNS } from '@/lib/constants'
-import { Search, Filter, Code2, Clock, ChevronLeft, ChevronRight, Sparkles, ExternalLink, RefreshCw, CheckCircle } from 'lucide-react'
+import { Search, Filter, Code2, ChevronLeft, ChevronRight, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Footer } from '@/components/footer'
 import { motion } from 'framer-motion'
+
+interface Repo {
+  id: string
+}
+
+interface SyncResult {
+  total: number
+  added: number
+  updated: number
+  scheduled?: number
+  duplicatesSkipped?: number
+}
 
 interface Problem {
   id: string
@@ -29,15 +40,15 @@ interface Problem {
   path: string
   updatedAt: string
   fileCount?: number
-  revisions: any[]
+  revisions: Array<{ id: string; nextDate: string; lastRevised: string | null }>
 }
 
 export default function ProblemsPage() {
   const [problems, setProblems] = useState<Problem[]>([])
-  const [repos, setRepos] = useState<any[]>([])
+  const [repos, setRepos] = useState<Repo[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
-  const [syncResult, setSyncResult] = useState<any>(null)
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -47,6 +58,8 @@ export default function ProblemsPage() {
   const [pattern, setPattern] = useState("")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reposError, setReposError] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300)
@@ -60,6 +73,7 @@ export default function ProblemsPage() {
 
   const fetchProblems = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const params = new URLSearchParams()
     if (debouncedSearch) params.append('search', debouncedSearch)
     if (platform) params.append('platform', platform)
@@ -68,19 +82,31 @@ export default function ProblemsPage() {
     if (pattern) params.append('pattern', pattern)
     params.append('page', page.toString())
 
-    const response = await fetch(`/api/problems?${params}`)
-    const data = await response.json()
-    setProblems(data.problems || [])
-    setTotalPages(data.pages || 1)
-    setLoading(false)
+    try {
+      const response = await fetch(`/api/problems?${params}`)
+      if (!response.ok) throw new Error(`Request failed with ${response.status}`)
+      const data = await response.json()
+      setProblems(data.problems || [])
+      setTotalPages(data.pages || 1)
+    } catch (error) {
+      // A failed request must not read as "you have zero problems": that
+      // silently steers into the "connect a repo" onboarding card instead.
+      console.error('Failed to fetch problems:', error)
+      setLoadError('Could not load your problems. Try refreshing the page.')
+    } finally {
+      setLoading(false)
+    }
   }, [debouncedSearch, platform, difficulty, language, pattern, page])
 
   const fetchRepos = async () => {
     try {
       const response = await fetch('/api/repos/connect')
+      if (!response.ok) throw new Error(`Request failed with ${response.status}`)
       const data = await response.json()
       setRepos(Array.isArray(data) ? data : [])
+      setReposError(false)
     } catch (error) {
+      setReposError(true)
       console.error('Failed to fetch repos:', error)
     }
   }
@@ -129,11 +155,11 @@ export default function ProblemsPage() {
   }, [fetchProblems])
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative flex min-h-screen flex-col">
       <AnimatedBackground />
       <Header />
       
-      <main className="container relative mx-auto max-w-6xl space-y-7 px-4 py-10">
+      <main className="container relative mx-auto max-w-6xl flex-1 space-y-7 px-4 py-10">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -175,12 +201,12 @@ export default function ProblemsPage() {
                 Synced <strong data-numeric>{syncResult.total}</strong> code files:{' '}
                 <strong data-numeric>{syncResult.added}</strong> added,{' '}
                 <strong data-numeric>{syncResult.updated}</strong> updated
-                {syncResult.scheduled > 0 && (
+                {(syncResult.scheduled ?? 0) > 0 && (
                   <>
                     , <strong data-numeric>{syncResult.scheduled}</strong> queued for recall
                   </>
                 )}
-                {syncResult.duplicatesSkipped > 0 && (
+                {(syncResult.duplicatesSkipped ?? 0) > 0 && (
                   <>
                     . <strong data-numeric>{syncResult.duplicatesSkipped}</strong> file
                     {syncResult.duplicatesSkipped === 1 ? '' : 's'} skipped as another copy of a
@@ -267,16 +293,61 @@ export default function ProblemsPage() {
               </Card>
             ))}
           </div>
+        ) : loadError ? (
+          <Card className="border-dashed border-2 border-destructive/40">
+            <CardContent className="p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+              </div>
+              <p className="text-lg font-semibold mb-2">Couldn&apos;t load your problems</p>
+              <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">{loadError}</p>
+              <Button size="lg" onClick={fetchProblems}>
+                <RefreshCw className="h-4 w-4" />
+                Try again
+              </Button>
+            </CardContent>
+          </Card>
         ) : problems.length === 0 ? (
           <Card className="border-dashed border-2">
             <CardContent className="p-12 text-center">
               <div className="mx-auto w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                 <Code2 className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className="text-lg font-semibold mb-2">No problems found</p>
-              <p className="text-sm text-muted-foreground">
-                Try adjusting your filters or add problems to your repository
-              </p>
+              {reposError ? (
+                <>
+                  <p className="text-lg font-semibold mb-2">Couldn&apos;t check your connected repo</p>
+                  <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
+                    This looks like a temporary loading error, not an unconnected repo.
+                  </p>
+                  <Button size="lg" onClick={fetchRepos}>
+                    <RefreshCw className="h-4 w-4" />
+                    Try again
+                  </Button>
+                </>
+              ) : repos.length === 0 ? (
+                <>
+                  <p className="text-lg font-semibold mb-2">Connect a repository first</p>
+                  <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
+                    Problems appear here after RecallDSA imports solved code files from GitHub.
+                  </p>
+                  <Link href="/settings">
+                    <Button size="lg">Choose GitHub repo</Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-semibold mb-2">No problems match this view</p>
+                  <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
+                    Adjust the filters above or sync your repository to import the latest solved files.
+                  </p>
+                  <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                    <Button onClick={syncRepo} disabled={syncing}>
+                      <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                      {syncing ? 'Syncing' : 'Sync from GitHub'}
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -327,4 +398,3 @@ export default function ProblemsPage() {
     </div>
   )
 }
-
