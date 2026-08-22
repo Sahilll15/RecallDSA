@@ -26,9 +26,22 @@ const mono = JetBrains_Mono({
   display: "swap",
 })
 
+const SITE_URL = "https://recall-dsa.vercel.app"
+const TITLE = "RecallDSA - Reconstruct, don't just remember"
+const DESCRIPTION = "Syncs solved DSA problems from GitHub and trains you to reconstruct them: pattern recognition, active recall sessions, and true spaced repetition"
+
 export const metadata: Metadata = {
-  title: "RecallDSA - Reconstruct, don't just remember",
-  description: "Syncs solved DSA problems from GitHub and trains you to reconstruct them: pattern recognition, active recall sessions, and true spaced repetition",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  keywords: [
+    "DSA revision",
+    "spaced repetition",
+    "leetcode practice",
+    "coding interview prep",
+    "algorithm patterns",
+    "active recall",
+  ],
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -37,6 +50,25 @@ export const metadata: Metadata = {
   },
   verification: {
     google: "91MxErQehrOqzvYAE8G4JIW62gi7KdBFUn4oDyKVB18",
+  },
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "RecallDSA",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 }
 
