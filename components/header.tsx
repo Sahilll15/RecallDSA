@@ -22,6 +22,7 @@ export function Header({
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/problems', label: 'Problems' },
     { href: '/revision', label: 'Revision' },
+    { href: '/design', label: 'Design' },
     { href: '/settings', label: 'Settings' },
   ];
 

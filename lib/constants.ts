@@ -21,6 +21,7 @@ export const PLATFORMS = [
   { value: "codechef", label: "CodeChef" },
   { value: "atcoder", label: "AtCoder" },
   { value: "hackerrank", label: "HackerRank" },
+  { value: "lld", label: "Low Level Design" },
 ]
 
 export const DIFFICULTIES = [

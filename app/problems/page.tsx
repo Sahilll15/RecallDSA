@@ -253,6 +253,7 @@ export default function ProblemsPage() {
                 <option value="gfg">GeeksforGeeks</option>
                 <option value="codeforces">Codeforces</option>
                 <option value="codechef">CodeChef</option>
+                <option value="lld">Low Level Design</option>
               </Select>
 
               <Select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>

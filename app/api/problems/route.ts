@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomBytes } from "crypto"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { groupByCanonicalKey } from "@/lib/problem-identity"
+import { groupByCanonicalKey, slugifySegment } from "@/lib/problem-identity"
+import { initialSchedulingState, nextDateFrom } from "@/lib/spaced-repetition"
 
 export async function GET(request: NextRequest) {
   const session = await auth()
@@ -103,6 +105,75 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Failed to fetch problems:", error)
     return NextResponse.json({ error: "Failed to fetch problems" }, { status: 500 })
+  }
+}
+
+/**
+ * Manually adds a problem with no GitHub file behind it (an LLD design
+ * exercise, a whiteboard problem, anything not synced from a repo) straight
+ * onto the recall schedule. `Problem.repoId` is required, so this attaches
+ * to the user's first connected repo purely as a home for the row.
+ */
+export async function POST(request: NextRequest) {
+  const session = await auth()
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const { title, platform, pattern, difficulty, language } = await request.json()
+
+    if (!title || typeof title !== "string" || !title.trim()) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 })
+    }
+
+    const repo = await prisma.repo.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "asc" },
+    })
+
+    if (!repo) {
+      return NextResponse.json(
+        { error: "Connect a GitHub repository first — manual problems still need a home." },
+        { status: 400 },
+      )
+    }
+
+    const slug = slugifySegment(title) || "problem"
+    const path = `manual/${platform || "custom"}/${slug}-${randomBytes(3).toString("hex")}`
+
+    const problem = await prisma.problem.create({
+      data: {
+        repoId: repo.id,
+        path,
+        title: title.trim(),
+        platform: platform || null,
+        pattern: pattern || null,
+        difficulty: difficulty || null,
+        language: language || null,
+        sha: `manual-${randomBytes(8).toString("hex")}`,
+        solvedAt: new Date(),
+      },
+    })
+
+    const fresh = initialSchedulingState()
+    const revision = await prisma.revision.create({
+      data: {
+        userId: session.user.id,
+        problemId: problem.id,
+        nextDate: nextDateFrom(fresh.intervalDays),
+        intervalDays: fresh.intervalDays,
+        easeFactor: fresh.easeFactor,
+        repetitions: fresh.repetitions,
+        lapses: fresh.lapses,
+      },
+    })
+
+    return NextResponse.json({ problem, revision }, { status: 201 })
+  } catch (error) {
+    console.error("Failed to add manual problem:", error)
+    return NextResponse.json({ error: "Failed to add problem" }, { status: 500 })
   }
 }
 
