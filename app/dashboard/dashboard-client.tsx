@@ -22,6 +22,7 @@ import {
   Code2,
   Calendar,
   ArrowRight,
+  Github,
   Target,
   Activity,
   Zap,
@@ -89,11 +90,11 @@ export function DashboardClient({
     .slice(0, 3);
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative flex min-h-screen flex-col">
       <AnimatedBackground />
       <Header user={user} />
 
-      <main className="container mx-auto max-w-6xl space-y-7 px-4 py-10">
+      <main className="container mx-auto max-w-6xl flex-1 space-y-7 px-4 py-10">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -120,23 +121,71 @@ export function DashboardClient({
               >
                 <Code2 className="h-6 w-6 text-primary" />
               </motion.div>
-              <AnimatedCardTitle className="font-display text-xl">No repository connected</AnimatedCardTitle>
+              <AnimatedCardTitle className="font-display text-xl">
+                Build your first recall queue
+              </AnimatedCardTitle>
               <AnimatedCardDescription className="text-base">
-                Get started by connecting your DSA GitHub repository
+                Connect GitHub, choose one repository, and import your solved problems.
               </AnimatedCardDescription>
             </AnimatedCardHeader>
-            <AnimatedCardContent className="flex justify-center pb-6">
-              <Link href="/settings">
-                <Button size="lg" className="group">
-                  <Zap className="h-4 w-4" />
-                  Connect repository
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </Button>
-              </Link>
+            <AnimatedCardContent className="space-y-5 pb-6">
+              <div className="mx-auto grid max-w-2xl gap-3 text-left sm:grid-cols-3">
+                {[
+                  ['Connect', 'Authorize GitHub access.'],
+                  ['Import', 'Pick the solved-problems repo.'],
+                  ['Recall', 'Open the first due queue.'],
+                ].map(([title, detail], index) => (
+                  <div
+                    key={title}
+                    className="rounded-md border border-border bg-surface-raised p-3"
+                  >
+                    <span
+                      data-numeric
+                      className="mb-2 flex h-7 w-7 items-center justify-center rounded border border-border bg-background font-mono text-xs text-muted-foreground"
+                    >
+                      {index + 1}
+                    </span>
+                    <p className="text-sm font-medium">{title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-center">
+                <Link href="/settings">
+                  <Button size="lg" className="group">
+                    <Github className="h-4 w-4" />
+                    Connect GitHub repo
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </Button>
+                </Link>
+              </div>
             </AnimatedCardContent>
           </AnimatedCard>
         ) : (
           <>
+            {stats.totalRevisions === 0 && (
+              <AnimatedCard delay={0.05} className="border-primary/25 bg-primary-soft">
+                <AnimatedCardHeader>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <AnimatedCardTitle className="font-display text-lg text-primary">
+                        Repository connected. Next, build the queue.
+                      </AnimatedCardTitle>
+                      <AnimatedCardDescription className="text-primary">
+                        Sync your solved files, then track the problems you want to rehearse.
+                      </AnimatedCardDescription>
+                    </div>
+                    <Link href="/problems">
+                      <Button size="lg" className="group whitespace-nowrap">
+                        Import problems
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </AnimatedCardHeader>
+              </AnimatedCard>
+            )}
+
             <MetricStrip
               columns={4}
               metrics={[

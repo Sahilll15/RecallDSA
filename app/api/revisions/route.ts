@@ -82,40 +82,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Problem not found" }, { status: 404 })
     }
 
-    // A sibling file of the same problem already in the queue means this is a
-    // duplicate, not a new card.
+    // This problem, or a sibling file of it, already being in the queue makes
+    // this a duplicate rather than a new card. Re-adding must never restart the
+    // ladder: the whole point of the schedule is that it only moves on a rating.
     const tracked = await prisma.revision.findMany({
-      where: { userId: session.user.id, problemId: { not: problemId } },
-      select: { id: true, problem: { select: { path: true } } },
+      where: { userId: session.user.id },
+      select: { id: true, problemId: true, problem: { select: { path: true } } },
     })
     const key = canonicalProblemKey(problem.path)
-    const sibling = tracked.find((r) => canonicalProblemKey(r.problem.path) === key)
+    const existing = tracked.find(
+      (r) => r.problemId === problemId || canonicalProblemKey(r.problem.path) === key,
+    )
 
-    if (sibling) {
-      const existing = await prisma.revision.findUnique({ where: { id: sibling.id } })
-      return NextResponse.json({ ...existing, alreadyTracked: true })
+    if (existing) {
+      const revision = await prisma.revision.findUnique({ where: { id: existing.id } })
+      return NextResponse.json({ ...revision, alreadyTracked: true })
     }
 
     const fresh = initialSchedulingState()
-    const nextDate = nextDateFrom(fresh.intervalDays)
 
-    const revision = await prisma.revision.upsert({
-      where: {
-        userId_problemId: {
-          userId: session.user.id,
-          problemId,
-        },
-      },
-      update: {
-        nextDate,
-        intervalDays: fresh.intervalDays,
-        easeFactor: fresh.easeFactor,
-        repetitions: fresh.repetitions,
-      },
-      create: {
+    const revision = await prisma.revision.create({
+      data: {
         userId: session.user.id,
         problemId,
-        nextDate,
+        nextDate: nextDateFrom(fresh.intervalDays),
         intervalDays: fresh.intervalDays,
       },
     })

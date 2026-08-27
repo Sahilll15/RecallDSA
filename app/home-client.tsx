@@ -1,438 +1,190 @@
 'use client';
 
-import { GithubSignInButton } from '@/components/github-signin-button';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { AnimatedCard, AnimatedCardContent, AnimatedCardDescription, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card';
-import { AnimatedBackground } from '@/components/ui/animated-background';
-import { GradientText } from '@/components/ui/gradient-text';
-import {
-  ArrowRight,
-  BarChart3,
-  CalendarCheck2,
-  Code2,
-  Sparkles,
-  Timer,
-  Users,
-  Workflow,
-  Zap,
-  ShieldCheck,
-  Github,
-  TrendingUp,
-  Target,
-  Rocket,
-} from 'lucide-react';
-import { Footer } from '@/components/footer';
 import { motion } from 'framer-motion';
+import {
+  Brain,
+  CheckCircle2,
+  Code2,
+  GitBranch,
+  Github,
+  ShieldCheck,
+  TimerReset,
+} from 'lucide-react';
 
-const heroStats = [
-  { value: '1-3-7d', label: 'Adaptive recall ladder', icon: Timer },
-  { value: '4 levels', label: 'Recall ratings, Anki-style', icon: CalendarCheck2 },
-  { value: '30+', label: 'DSA patterns tracked', icon: Code2 },
-];
+import { Footer } from '@/components/footer';
+import { GithubSignInButton } from '@/components/github-signin-button';
+import { AnimatedBackground } from '@/components/ui/animated-background';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 
-const featureHighlights = [
+const setupSteps = [
   {
-    icon: Sparkles,
-    title: 'Recall sessions, not rereading',
-    description:
-      'Name the pattern, reconstruct the approach, then reveal your solution. The answer stays hidden until you have tried.',
-  },
-  {
-    icon: Target,
-    title: 'True spaced repetition',
-    description:
-      'Rate every recall Again, Hard, Good, or Easy. Intervals follow a 1-3-7 day ladder, then grow or reset with your memory.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Pattern mastery tracking',
-    description:
-      'Recognizing binary-search-on-answer is a different skill from coding it. Both are measured separately.',
-  },
-  {
-    icon: Workflow,
-    title: 'GitHub-native ingestion',
-    description:
-      'Push a solution and it enters your review queue automatically, with pattern, platform, and difficulty parsed from the path.',
-  },
-  {
-    icon: Users,
-    title: 'Mistakes as first-class data',
-    description:
-      'Log what tripped you up per problem. Recurring concepts surface on your dashboard as the thing to revise next.',
-  },
-  {
-    icon: Zap,
-    title: 'Progressive hints',
-    description:
-      'Store your own hint ladder per problem. Recall sessions reveal one nudge at a time and count what you needed.',
-  },
-];
-
-const workflowSteps = [
-  {
-    title: 'Connect your repo',
-    detail:
-      'Authorize GitHub once and pick any DSA repository, no restructuring required.',
-    metric: '2 min setup',
+    title: 'Connect GitHub',
+    detail: 'Authorize once so RecallDSA can read your solved-problem repo.',
     icon: Github,
   },
   {
-    title: 'Auto-ingest problems',
-    detail:
-      'Tree + contents APIs populate every code file with difficulty, platform, and language context.',
-    metric: 'All languages',
-    icon: TrendingUp,
+    title: 'Import solves',
+    detail: 'Pick the repository. Code files become tracked problems.',
+    icon: GitBranch,
   },
   {
-    title: 'Recall & rate',
-    detail:
-      'Work the due queue in recall sessions, rate your memory honestly, and let the schedule adapt.',
-    metric: 'Never forget',
-    icon: Target,
+    title: 'Choose first cards',
+    detail: 'Track the problems you want to rehearse, then open the queue.',
+    icon: Brain,
   },
+];
+
+const clarityPoints = [
+  'Recognition and reconstruction are measured separately.',
+  'The answer stays hidden until you commit to an approach.',
+  'Spaced repetition handles the schedule after every rating.',
 ];
 
 export function HomeClient({ authError }: { authError?: string | null }) {
   return (
-    <div className="relative min-h-screen">
+    <div className="relative flex min-h-screen flex-col overflow-hidden">
       <AnimatedBackground />
 
-      <section className="relative">
-        <div className="container relative mx-auto max-w-7xl px-4 py-16 lg:py-24">
-          {authError && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8 flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-              role="alert"
-            >
-              <ShieldCheck className="h-4 w-4 shrink-0" />
-              {authError}
-            </motion.div>
-          )}
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-            <div className="space-y-6">
+      <main className="flex-1">
+        <section className="relative border-b border-border">
+          <div className="container mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:py-20">
+            <div className="max-w-2xl space-y-7">
+              {authError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-3 rounded-[var(--radius)] border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  {authError}
+                </motion.div>
+              )}
+
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-4"
               >
-                <Badge variant="outline" className="border-primary/20">
-                  <Rocket className="h-3 w-3 mr-1.5" />
-                  Built for problem solvers
+                <Badge variant="outline" className="w-fit">
+                  <TimerReset className="h-3.5 w-3.5" />
+                  First queue in under 60 seconds
                 </Badge>
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl"
-              >
-                Master DSA with{' '}
-                <GradientText className="text-4xl sm:text-5xl lg:text-6xl">
-                  intelligent revision
-                </GradientText>
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-base text-muted-foreground max-w-xl"
-              >
-                Connect your GitHub repository and let spaced repetition keep
-                you interview-ready. No spreadsheets, no manual tracking.
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="flex flex-wrap gap-3 pt-2"
-              >
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <GithubSignInButton />
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline" className="group">
-                    Learn more
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                </motion.div>
+                <h1 className="max-w-3xl font-display text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
+                  Turn solved DSA problems into a recall queue.
+                </h1>
+                <p className="max-w-xl text-base leading-7 text-muted-foreground">
+                  RecallDSA reads your GitHub solutions, schedules the next review, and
+                  trains the skill interviews actually test: reconstructing the pattern
+                  without looking at your code first.
+                </p>
               </motion.div>
 
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="grid gap-3 sm:grid-cols-3 pt-6"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: 0.08 }}
+                className="flex flex-col gap-3 sm:flex-row"
               >
-                {heroStats.map((stat, index) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
-                    className="flex flex-col gap-1 p-4 rounded-lg bg-card/50 border border-border/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300"
-                  >
-                    <div className="flex items-center gap-2">
-                      <stat.icon className="h-4 w-4 text-primary" />
-                      <p className="text-2xl font-semibold">{stat.value}</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {stat.label}
-                    </p>
-                  </motion.div>
+                <GithubSignInButton />
+              </motion.div>
+
+              <motion.ul
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: 0.14 }}
+                className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-3"
+              >
+                {clarityPoints.map((point) => (
+                  <li key={point} className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>{point}</span>
+                  </li>
                 ))}
-              </motion.div>
+              </motion.ul>
             </div>
 
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
               className="relative"
             >
-              <AnimatedCard className="relative" delay={0.4}>
-                <AnimatedCardHeader>
+              <Card className="overflow-hidden">
+                <div className="border-b border-border bg-surface-raised px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
-                    <AnimatedCardTitle>Your dashboard, roughly</AnimatedCardTitle>
-                    <Badge variant="outline" className="shrink-0 font-mono text-2xs uppercase tracking-wider">
-                      Example
-                    </Badge>
-                  </div>
-                  <AnimatedCardDescription>
-                    Sample data showing what a synced repo looks like
-                  </AnimatedCardDescription>
-                </AnimatedCardHeader>
-                <AnimatedCardContent className="space-y-4">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                    className="rounded-md border border-border/50 bg-muted/30 p-3 font-mono text-xs"
-                  >
-                    <div className="flex items-center gap-2 mb-2 text-xs text-primary">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary"></span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-md border border-primary/30 bg-primary-soft">
+                        <Code2 className="h-3.5 w-3.5 text-primary" />
                       </span>
-                      Webhook push
+                      <span className="font-mono text-sm font-semibold">first-run preview</span>
                     </div>
-                    <pre className="text-xs leading-relaxed text-muted-foreground">
-                      {`leetcode/medium/construct-binary-tree.py
-Platform: LeetCode | Difficulty: Medium
-Interval: 1d -> 3d -> 7d`}
-                    </pre>
-                  </motion.div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.7 }}
-                      whileHover={{ scale: 1.05 }}
-                      className="rounded-md border border-border/50 bg-card p-3 transition-all"
-                    >
-                      <p className="text-xs text-muted-foreground">Due today</p>
-                      <p className="mt-1 text-2xl font-semibold">6</p>
-                      <Badge variant="success" className="mt-2">
-                        Ready to review
-                      </Badge>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.8 }}
-                      whileHover={{ scale: 1.05 }}
-                      className="rounded-md border border-border/50 bg-card p-3 transition-all"
-                    >
-                      <p className="text-xs text-muted-foreground">
-                        Problems synced
-                      </p>
-                      <p className="mt-1 text-2xl font-semibold">128</p>
-                      <Badge className="mt-2">4 platforms</Badge>
-                    </motion.div>
+                    <Badge variant="success">3 steps</Badge>
                   </div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.9 }}
-                    className="rounded-md border border-border/50 bg-card p-3"
-                  >
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Languages tracked
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['cpp', 'python', 'java', 'typescript', 'go', 'rust'].map((lang, index) => (
-                        <motion.div
-                          key={lang}
-                          initial={{ opacity: 0, scale: 0 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 1 + index * 0.05 }}
+                </div>
+                <CardContent className="p-0">
+                  <div className="grid divide-y divide-border">
+                    {setupSteps.map((step, index) => (
+                      <div key={step.title} className="grid gap-4 px-5 py-5 sm:grid-cols-[2rem_1fr_auto] sm:items-center">
+                        <span
+                          data-numeric
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background font-mono text-xs text-muted-foreground"
                         >
-                          <Badge variant="outline" className="text-xs">
-                            {lang}
-                          </Badge>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                </AnimatedCardContent>
-              </AnimatedCard>
+                          {index + 1}
+                        </span>
+                        <div className="space-y-1">
+                          <p className="font-display text-base font-semibold">{step.title}</p>
+                          <p className="text-sm text-muted-foreground">{step.detail}</p>
+                        </div>
+                        <step.icon className="hidden h-4 w-4 text-primary sm:block" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-border bg-primary-soft px-5 py-4">
+                    <p className="text-sm font-medium text-primary">
+                      Outcome: imported solves, then a focused queue you control.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="py-16 lg:py-24 bg-muted/30 relative">
-        <div className="container mx-auto max-w-7xl px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="max-w-2xl mx-auto text-center mb-12"
-          >
-            <Badge variant="outline" className="mb-3">
-              Features
-            </Badge>
-            <h2 className="text-3xl font-semibold tracking-tight mb-4">
-              Built for modern workflows
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Intelligent automation and seamless GitHub integration to keep you
-              focused on what matters
-            </p>
-          </motion.div>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {featureHighlights.map((feature, index) => (
-              <AnimatedCard key={feature.title} delay={index * 0.1} hover={true}>
-                <AnimatedCardHeader>
-                  <motion.div
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.6 }}
-                    className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-3"
-                  >
-                    <feature.icon className="h-5 w-5 text-primary" />
-                  </motion.div>
-                  <AnimatedCardTitle className="text-base">{feature.title}</AnimatedCardTitle>
-                </AnimatedCardHeader>
-                <AnimatedCardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {feature.description}
-                  </p>
-                </AnimatedCardContent>
-              </AnimatedCard>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 lg:py-24 relative">
-        <div className="container mx-auto max-w-7xl px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="max-w-2xl mx-auto text-center mb-12"
-          >
-            <Badge variant="outline" className="mb-3">
-              How it works
-            </Badge>
-            <h2 className="text-3xl font-semibold tracking-tight mb-4">
-              Get started in minutes
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Simple setup with powerful automation that scales with your
-              learning journey
-            </p>
-          </motion.div>
-
-          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
-            {workflowSteps.map((step, index) => (
-              <div key={step.title} className="relative">
-                <AnimatedCard delay={index * 0.15} className="h-full">
-                  <AnimatedCardHeader>
-                    <div className="flex items-center gap-3 mb-3">
-                      <motion.div
-                        whileHover={{ scale: 1.2, rotate: 15 }}
-                        transition={{ type: "spring", stiffness: 400 }}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
-                      >
-                        <step.icon className="h-5 w-5 text-primary" />
-                      </motion.div>
-                      <Badge variant="secondary" className="text-xs">
-                        {step.metric}
-                      </Badge>
-                    </div>
-                    <AnimatedCardTitle className="text-base">{step.title}</AnimatedCardTitle>
-                  </AnimatedCardHeader>
-                  <AnimatedCardContent>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {step.detail}
-                    </p>
-                  </AnimatedCardContent>
-                </AnimatedCard>
-                {index < workflowSteps.length - 1 && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.3 + index * 0.15 }}
-                    className="hidden md:block absolute top-1/2 -right-3 transform -translate-y-1/2"
-                  >
-                    <ArrowRight className="h-5 w-5 text-primary/50" />
-                  </motion.div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 lg:py-24 relative">
-        <div className="container mx-auto max-w-4xl px-4">
-          <AnimatedCard delay={0.2} className="border-primary/30 bg-primary/5">
-            <AnimatedCardContent className="p-8 md:p-12 text-center">
-              <motion.div
-                initial={{ scale: 0 }}
-                whileInView={{ scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ type: "spring", stiffness: 200 }}
-                className="inline-block mb-4"
-              >
-                <Sparkles className="h-12 w-12 text-primary" />
-              </motion.div>
-              <h2 className="text-2xl font-semibold tracking-tight mb-3">
-                Ready to master DSA?
+        <section className="relative py-14 lg:py-18">
+          <div className="container mx-auto grid max-w-6xl gap-8 px-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <div className="space-y-3">
+              <p className="eyebrow">Why it exists</p>
+              <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                Solved once is not remembered.
               </h2>
-              <p className="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">
-                Join developers using intelligent spaced repetition to stay
-                interview-ready
+              <p className="text-sm leading-6 text-muted-foreground">
+                Most trackers count completed problems. RecallDSA cares whether you can
+                identify the technique and rebuild the solution later.
               </p>
-              <div className="flex flex-wrap gap-3 justify-center">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <GithubSignInButton />
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline">Learn more</Button>
-                </motion.div>
-              </div>
-            </AnimatedCardContent>
-          </AnimatedCard>
-        </div>
-      </section>
+            </div>
+            <div className="grid gap-3">
+              {[
+                ['GitHub is the source of truth', 'No spreadsheet upkeep. Your repository tells the app what you solved.'],
+                ['Recall is the daily action', 'The main screen points to the queue first, then supporting metrics.'],
+                ['Advanced tools stay out of the way', 'Webhooks, pattern cleanup, and drills are available after the queue exists.'],
+              ].map(([title, detail]) => (
+                <Card key={title}>
+                  <CardContent className="grid gap-2 p-5 sm:grid-cols-[13rem_1fr] sm:items-start">
+                    <p className="font-display text-base font-semibold">{title}</p>
+                    <p className="text-sm leading-6 text-muted-foreground">{detail}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+      </main>
 
       <Footer />
     </div>
   );
 }
-

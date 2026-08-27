@@ -71,7 +71,9 @@ export default async function DashboardPage() {
         },
       }),
       prisma.attempt.findMany({
-        where: { userId, createdAt: { gte: thirtyDaysAgo } },
+        // Recall rate measures rated recall sessions. A re-solve on the judge
+        // advances the schedule but is no evidence of recalling it cold.
+        where: { userId, source: 'recall', createdAt: { gte: thirtyDaysAgo } },
         select: {
           rating: true,
           patternRecognized: true,

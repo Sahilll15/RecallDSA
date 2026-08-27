@@ -6,6 +6,7 @@ import { initialSchedulingState, nextDateFrom } from "@/lib/spaced-repetition"
 import { SOLVE_HISTORY_DAYS } from "@/lib/constants"
 import { canonicalProblemKey } from "@/lib/problem-identity"
 import { deleteHistorylessProblems } from "@/lib/problem-lifecycle"
+import { applySolveCredits, collectSolves } from "@/lib/solve-credit-store"
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -142,6 +143,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // A re-solve read out of commit history is a review of a tracked problem,
+    // not a reason to queue it again tomorrow.
+    const credited = await applySolveCredits(
+      session.user.id,
+      collectSolves([...solveDates].filter(([path]) => treePaths.has(path))),
+    )
+
     // A renamed file is a new path, so deleting on "no longer in the tree"
     // used to destroy the entire history of a renamed problem.
     // deleteHistorylessProblems only removes rows carrying nothing.
@@ -155,6 +163,7 @@ export async function POST(request: NextRequest) {
       updated,
       removed,
       scheduled,
+      credited,
       duplicatesSkipped,
       keptWithHistory,
       total: codeFiles.length,

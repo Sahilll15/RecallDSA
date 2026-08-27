@@ -4,6 +4,7 @@ import { parseProblemInfo, isCodeFile } from '@/lib/github';
 import { initialSchedulingState, nextDateFrom } from '@/lib/spaced-repetition';
 import { canonicalProblemKey } from '@/lib/problem-identity';
 import { deleteHistorylessProblems } from '@/lib/problem-lifecycle';
+import { applySolveCredits, collectSolves } from '@/lib/solve-credit-store';
 import crypto from 'crypto';
 
 function verifySignature(
@@ -65,20 +66,32 @@ export async function POST(request: NextRequest) {
       const allFiles = new Set<string>();
       const addedFiles = new Set<string>();
       const removedFiles = new Set<string>();
+      // When each file was last written, so a re-solve is dated by the commit
+      // that carried it rather than by whenever a sync happened to notice.
+      const solvedAt = new Map<string, Date>();
 
       for (const commit of payload.commits) {
+        const committedAt = commit.timestamp ? new Date(commit.timestamp) : null;
+
+        const touch = (f: string) => {
+          allFiles.add(f);
+          if (!committedAt || Number.isNaN(committedAt.getTime())) return;
+          const seen = solvedAt.get(f);
+          if (!seen || committedAt > seen) solvedAt.set(f, committedAt);
+        };
+
         if (commit.added) {
           commit.added.forEach((f: string) => {
-            allFiles.add(f);
+            touch(f);
             addedFiles.add(f);
           });
         }
-        if (commit.modified)
-          commit.modified.forEach((f: string) => allFiles.add(f));
+        if (commit.modified) commit.modified.forEach(touch);
         if (commit.removed)
           commit.removed.forEach((f: string) => {
             allFiles.delete(f);
             addedFiles.delete(f);
+            solvedAt.delete(f);
             removedFiles.add(f);
           });
       }
@@ -99,6 +112,7 @@ export async function POST(request: NextRequest) {
         const filename = filePath.split('/').pop()!;
         const { platform, difficulty, title, language, pattern } =
           parseProblemInfo(filePath, filename);
+        const fileSolvedAt = solvedAt.get(filePath) ?? null;
 
         const problem = await prisma.problem.upsert({
           where: {
@@ -114,6 +128,7 @@ export async function POST(request: NextRequest) {
             language,
             pattern,
             sha: payload.after || '',
+            ...(fileSolvedAt ? { solvedAt: fileSolvedAt } : {}),
             updatedAt: new Date(),
           },
           create: {
@@ -125,6 +140,7 @@ export async function POST(request: NextRequest) {
             difficulty,
             language,
             pattern,
+            solvedAt: fileSolvedAt,
           },
         });
 
@@ -151,6 +167,13 @@ export async function POST(request: NextRequest) {
           });
         }
       }
+
+      // A push that re-solves an already-tracked problem is a review of it, not
+      // a reason to queue it again tomorrow.
+      await applySolveCredits(
+        repo.userId,
+        collectSolves([...solvedAt].filter(([f]) => isCodeFile(f))),
+      );
 
       if (removedFiles.size > 0) {
         // A deleted file must not take the review history of its problem with

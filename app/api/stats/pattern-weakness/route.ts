@@ -20,7 +20,8 @@ export async function GET() {
     since.setDate(since.getDate() - WINDOW_DAYS);
 
     const attempts = await prisma.attempt.findMany({
-      where: { userId: session.user.id, createdAt: { gte: since } },
+      // Only rated recall sessions say anything about a weak pattern.
+      where: { userId: session.user.id, source: 'recall', createdAt: { gte: since } },
       select: {
         rating: true,
         patternRecognized: true,
