@@ -5,6 +5,8 @@ import { MASTERY_INTERVAL_DAYS } from '@/lib/spaced-repetition';
 import { dedupeByCanonicalKey } from '@/lib/problem-identity';
 import { dedupeRevisionQueue } from '@/lib/revision-queue';
 import { buildActivityCalendar } from '@/lib/activity';
+import { PROJECTS } from '@/lib/roadmap/catalog';
+import { mergeProgress, summarizeOverview } from '@/lib/roadmap/progress';
 import { DashboardClient, type PatternReadiness } from './dashboard-client';
 
 export default async function DashboardPage() {
@@ -56,7 +58,7 @@ export default async function DashboardPage() {
   const activitySince = new Date(today);
   activitySince.setDate(activitySince.getDate() - (activityWindowDays - 1));
 
-  const [allRevisions, recentAttempts, mistakeConcepts, activityStamps] =
+  const [allRevisions, recentAttempts, mistakeConcepts, activityStamps, roadmapRow] =
     await Promise.all([
       prisma.revision.findMany({
         where: { userId },
@@ -93,7 +95,16 @@ export default async function DashboardPage() {
         where: { userId, createdAt: { gte: activitySince } },
         select: { createdAt: true },
       }),
+      prisma.roadmapProgress.findUnique({
+        where: { userId },
+        select: { state: true },
+      }),
     ]);
+
+  const roadmap = summarizeOverview(
+    mergeProgress(roadmapRow?.state ?? null),
+    PROJECTS.map((p) => p.id),
+  );
 
   const activity = buildActivityCalendar(
     activityStamps.map((a) => a.createdAt),
@@ -180,6 +191,7 @@ export default async function DashboardPage() {
       }}
       problemsByDifficulty={problemsByDifficulty}
       activity={activity}
+      roadmap={roadmap}
     />
   );
 }

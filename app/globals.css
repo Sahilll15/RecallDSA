@@ -52,6 +52,12 @@
     --panel-shadow: 0 1px 2px 0 hsl(220 30% 20% / 0.06), 0 1px 3px -1px hsl(220 30% 20% / 0.05);
     --panel-shadow-raised: 0 4px 12px -2px hsl(220 30% 20% / 0.08), 0 2px 4px -2px hsl(220 30% 20% / 0.06);
     --grid-color: hsl(220 18% 74% / 0.18);
+
+    /* Roadmap levels: cold blue, amber, violet. Green stays reserved for done. */
+    --rm-lv-f: 205 82% 35%;
+    --rm-lv-c: 28 92% 32%;
+    --rm-lv-a: 262 55% 48%;
+    --rm-edge: 220 14% 72%;
   }
 
   .dark {
@@ -96,6 +102,11 @@
     --panel-shadow: none;
     --panel-shadow-raised: none;
     --grid-color: hsl(210 30% 90% / 0.045);
+
+    --rm-lv-f: 195 85% 58%;
+    --rm-lv-c: 38 94% 58%;
+    --rm-lv-a: 262 80% 72%;
+    --rm-edge: 220 12% 28%;
   }
 }
 
@@ -285,5 +296,115 @@
   }
   .problem-statement sub {
     @apply align-sub text-[0.7em];
+  }
+}
+
+/* Roadmap tree. Nodes are absolutely placed on a pannable stage, so the layout
+   math lives here rather than in utility classes. */
+@layer components {
+  .rm-stage-wrap {
+    @apply absolute inset-0 overflow-hidden;
+    cursor: grab;
+    touch-action: none;
+    background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+  .rm-stage-wrap.grabbing {
+    cursor: grabbing;
+  }
+  .rm-stage {
+    @apply absolute left-0 top-0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  .rm-stage.smooth {
+    transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .rm-edges {
+    @apply pointer-events-none absolute left-0 top-0 overflow-visible;
+  }
+  .rm-edges path {
+    fill: none;
+    stroke: hsl(var(--rm-edge));
+    stroke-width: 2;
+    transition: stroke 0.25s;
+    animation: rm-edge-in 0.9s ease 0.18s backwards;
+  }
+  .rm-edges path.done {
+    stroke: hsl(var(--primary));
+    stroke-width: 2.4;
+  }
+  @keyframes rm-edge-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes rm-node-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) translateY(16px) scale(0.93);
+    }
+  }
+  .rm-node {
+    @apply absolute w-[196px] cursor-pointer rounded-[var(--radius)] border border-border-strong bg-surface px-3 pb-3 pt-2.5 text-left elevated;
+    transform: translate(-50%, -50%);
+    transition:
+      transform 0.14s,
+      border-color 0.2s,
+      box-shadow 0.2s,
+      background-color 0.2s;
+    animation: rm-node-in 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 26ms);
+  }
+  .rm-node:hover {
+    @apply border-primary elevated-raised;
+    transform: translate(-50%, -50%) translateY(-2px);
+  }
+  .rm-node:active {
+    transform: translate(-50%, -50%) scale(0.985);
+  }
+  .rm-node.selected {
+    @apply border-primary;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25);
+  }
+  .rm-node.done {
+    @apply border-primary/50 bg-primary-soft;
+  }
+  .rm-node.next::after {
+    content: '';
+    @apply pointer-events-none absolute -inset-px rounded-[var(--radius)];
+    box-shadow:
+      0 0 0 1.5px hsl(var(--warning)),
+      0 0 22px -4px hsl(var(--warning));
+  }
+  .rm-node-check {
+    @apply absolute -right-2 -top-2 hidden h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground;
+  }
+  .rm-node.done .rm-node-check {
+    display: grid;
+  }
+  .rm-node-bar {
+    @apply mt-2 h-[3px] overflow-hidden rounded-full bg-muted;
+  }
+  .rm-node-bar i {
+    @apply block h-full w-0 rounded-full bg-primary;
+    transition: width 0.3s;
+  }
+  .rm-node.done .rm-node-bar i {
+    width: 100%;
+  }
+  /* Level marker: a small rotated square so it reads as a category, not a status dot. */
+  .rm-lv {
+    @apply inline-block h-2 w-2 shrink-0 rounded-[2px];
+    transform: rotate(45deg);
+  }
+  .rm-lv[data-lv='F'] {
+    background: hsl(var(--rm-lv-f));
+  }
+  .rm-lv[data-lv='C'] {
+    background: hsl(var(--rm-lv-c));
+  }
+  .rm-lv[data-lv='A'] {
+    background: hsl(var(--rm-lv-a));
   }
 }

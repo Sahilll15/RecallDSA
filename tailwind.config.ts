@@ -79,6 +79,12 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        /** Roadmap level colours; see --rm-lv-* in globals.css. */
+        lv: {
+          f: 'hsl(var(--rm-lv-f))',
+          c: 'hsl(var(--rm-lv-c))',
+          a: 'hsl(var(--rm-lv-a))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

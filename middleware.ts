@@ -7,6 +7,6 @@ import authConfig from "@/lib/auth.config"
 export const { auth: middleware } = NextAuth(authConfig)
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/problems/:path*", "/revision/:path*", "/design/:path*", "/settings/:path*"],
+  matcher: ["/dashboard/:path*", "/problems/:path*", "/revision/:path*", "/design/:path*", "/roadmap/:path*", "/settings/:path*"],
 }
 

@@ -23,6 +23,7 @@ export function Header({
     { href: '/problems', label: 'Problems' },
     { href: '/revision', label: 'Revision' },
     { href: '/design', label: 'Design' },
+    { href: '/roadmap', label: 'Roadmap' },
     { href: '/settings', label: 'Settings' },
   ];
 
@@ -46,7 +47,7 @@ export function Header({
               quiet next to the page's own primary action. */}
           <nav className="hidden items-center gap-6 md:flex">
             {links.map((link) => {
-              const active = pathname === link.href;
+              const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
               return (
                 <Link
                   key={link.href}

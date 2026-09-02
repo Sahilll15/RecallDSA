@@ -21,6 +21,7 @@ model User {
   revisions Revision[]
   accounts  Account[]
   sessions  Session[]
+  roadmap   RoadmapProgress?
 
   @@index([email])
 }
@@ -181,4 +182,15 @@ model Mistake {
 
   @@index([userId])
   @@index([problemId])
+}
+
+// Learning-roadmap progress (trees, 30-day plans, portfolio projects) as one
+// document per user; the shape is owned by lib/roadmap/progress.ts.
+model RoadmapProgress {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  state     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

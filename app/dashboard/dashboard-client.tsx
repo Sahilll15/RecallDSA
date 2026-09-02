@@ -35,6 +35,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Footer } from '@/components/footer';
+import { RoadmapTile } from '@/components/roadmap/roadmap-tile';
+import type { RoadmapOverview } from '@/lib/roadmap/progress';
 
 export interface PatternReadiness {
   pattern: string;
@@ -70,6 +72,7 @@ interface DashboardClientProps {
     _count: number;
   }>;
   activity: ActivityData;
+  roadmap: RoadmapOverview;
 }
 
 const difficultyBars: Record<string, string> = {
@@ -84,6 +87,7 @@ export function DashboardClient({
   readiness,
   problemsByDifficulty,
   activity,
+  roadmap,
 }: DashboardClientProps) {
   const weakPatterns = readiness.patterns
     .filter((p) => p.attempts >= 2 && p.struggles / p.attempts >= 0.5)
@@ -518,6 +522,8 @@ export function DashboardClient({
             </div>
           </>
         )}
+
+        <RoadmapTile overview={roadmap} delay={0.2} />
       </main>
 
       <Footer />

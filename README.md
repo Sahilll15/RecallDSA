@@ -125,6 +125,16 @@ Log the same concept a few times and it surfaces on the dashboard as a **recurri
 
 ---
 
+## Learning roadmap
+
+Recall keeps what you already solved fresh. The roadmap covers what you have not learned yet, in the same account.
+
+- **Six skill trees**: ML from scratch to agentic AI, the SWE fast path into agentic systems, production agentic systems, high-level design, low-level design, and DSA. Each node carries what to learn, the tools, a small build project, an hour estimate and real resource links. Mark a node done and every node whose prerequisites are complete lights up as the next step.
+- **Two 30-day plans**: from-scratch and agentic-for-SWEs, with checkable tasks per day, a pace slider that projects the finish date, and a resume button that jumps to the first unfinished day.
+- **Eighteen portfolio projects** in starter, core and flagship tiers, each with milestones and a status you cycle through building and built.
+
+Progress is one document per user in Postgres, cached in the browser so the tree paints before the round trip. `/` opens a search across every topic and project. Export and import as JSON from the panel.
+
 ## Both themes, and it works on a phone
 
 <div align="center">
