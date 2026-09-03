@@ -56,12 +56,19 @@ export interface LadderRung {
    * readiness read lapses out of the recall queue and reuse its trigger card.
    */
   corePattern: string;
+  /**
+   * Rungs to clear first. A rung unlocks once every dep has its anchor tier
+   * solved unaided (lib/ladder-graph.ts); locked rungs stay openable, the lock
+   * is advice about order, not a wall.
+   */
+  deps: string[];
   problems: LadderProblem[];
 }
 
 export const LADDER: LadderRung[] = [
   {
     id: 'fast-slow-pointer',
+    deps: ['two-pointers'],
     name: 'Fast and Slow Pointer',
     group: 'Pointers and windows',
     corePattern: 'fast-slow-pointer',
@@ -74,6 +81,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'overlapping-intervals',
+    deps: ['two-pointers'],
     name: 'Overlapping Intervals',
     group: 'Arrays',
     corePattern: 'intervals',
@@ -87,6 +95,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'prefix-sum',
+    deps: [],
     name: 'Prefix Sum',
     group: 'Arrays',
     corePattern: 'prefix-sum',
@@ -100,6 +109,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'sliding-window-fixed',
+    deps: ['two-pointers'],
     name: 'Sliding Window: Fixed Size',
     group: 'Pointers and windows',
     corePattern: 'sliding-window',
@@ -114,6 +124,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'sliding-window-variable',
+    deps: ['sliding-window-fixed'],
     name: 'Sliding Window: Variable Size',
     group: 'Pointers and windows',
     corePattern: 'sliding-window',
@@ -129,6 +140,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'two-pointers',
+    deps: [],
     name: 'Two Pointers',
     group: 'Pointers and windows',
     corePattern: 'two-pointers',
@@ -143,6 +155,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'cyclic-sort',
+    deps: [],
     name: 'Cyclic Sort',
     group: 'Arrays',
     corePattern: 'cyclic-sort',
@@ -155,6 +168,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'linked-list-reversal',
+    deps: ['fast-slow-pointer'],
     name: 'In-place Linked List Reversal',
     group: 'Linked lists',
     corePattern: 'linked-list',
@@ -166,6 +180,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'matrix-manipulation',
+    deps: [],
     name: 'Matrix Manipulation',
     group: 'Arrays',
     corePattern: 'matrix',
@@ -178,6 +193,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'bfs',
+    deps: ['tree-level-order'],
     name: 'Breadth First Search',
     group: 'Graphs',
     corePattern: 'bfs',
@@ -190,6 +206,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dfs',
+    deps: ['tree-root-to-leaf'],
     name: 'Depth First Search',
     group: 'Graphs',
     corePattern: 'dfs',
@@ -203,6 +220,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'backtracking',
+    deps: ['dfs'],
     name: 'Backtracking',
     group: 'Recursion',
     corePattern: 'backtracking',
@@ -218,6 +236,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'modified-binary-search',
+    deps: ['two-pointers'],
     name: 'Modified Binary Search',
     group: 'Binary search',
     corePattern: 'binary-search',
@@ -232,6 +251,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'binary-search-on-answer',
+    deps: ['modified-binary-search'],
     name: 'Binary Search on the Answer',
     group: 'Binary search',
     corePattern: 'binary-search-on-answer',
@@ -243,6 +263,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'bitwise-xor',
+    deps: [],
     name: 'Bitwise XOR',
     group: 'Bit tricks',
     corePattern: 'bit-manipulation',
@@ -256,6 +277,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'top-k-elements',
+    deps: [],
     name: 'Top \'K\' Elements',
     group: 'Heaps',
     corePattern: 'heap',
@@ -268,6 +290,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'k-way-merge',
+    deps: ['top-k-elements'],
     name: 'K-way Merge',
     group: 'Heaps',
     corePattern: 'k-way-merge',
@@ -280,6 +303,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'two-heaps',
+    deps: ['top-k-elements'],
     name: 'Two Heaps',
     group: 'Heaps',
     corePattern: 'two-heaps',
@@ -291,6 +315,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'monotonic-stack',
+    deps: ['two-pointers'],
     name: 'Monotonic Stack',
     group: 'Arrays',
     corePattern: 'monotonic-stack',
@@ -305,6 +330,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'tree-level-order',
+    deps: [],
     name: 'Trees: Level Order Traversal',
     group: 'Trees',
     corePattern: 'trees',
@@ -321,6 +347,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'tree-construction',
+    deps: ['tree-height'],
     name: 'Trees: Construction',
     group: 'Trees',
     corePattern: 'trees',
@@ -333,6 +360,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'tree-height',
+    deps: ['tree-level-order'],
     name: 'Trees: Height and Depth',
     group: 'Trees',
     corePattern: 'trees',
@@ -345,6 +373,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'tree-root-to-leaf',
+    deps: ['tree-height'],
     name: 'Trees: Root-to-leaf Paths',
     group: 'Trees',
     corePattern: 'trees',
@@ -360,6 +389,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'tree-ancestor',
+    deps: ['tree-root-to-leaf'],
     name: 'Trees: Ancestors',
     group: 'Trees',
     corePattern: 'trees',
@@ -372,6 +402,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'bst',
+    deps: ['tree-height'],
     name: 'Binary Search Tree',
     group: 'Trees',
     corePattern: 'bst',
@@ -385,6 +416,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dp-knapsack-01',
+    deps: ['backtracking'],
     name: 'DP: Take or Not Take (0/1)',
     group: 'Dynamic programming',
     corePattern: 'dynamic-programming',
@@ -398,6 +430,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dp-knapsack-unbounded',
+    deps: ['dp-knapsack-01'],
     name: 'DP: Infinite Supply',
     group: 'Dynamic programming',
     corePattern: 'dynamic-programming',
@@ -410,6 +443,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dp-lis',
+    deps: ['dp-knapsack-01'],
     name: 'DP: Longest Increasing Subsequence',
     group: 'Dynamic programming',
     corePattern: 'dynamic-programming',
@@ -423,6 +457,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dp-grids',
+    deps: ['dp-knapsack-01', 'matrix-manipulation'],
     name: 'DP on Grids',
     group: 'Dynamic programming',
     corePattern: 'dynamic-programming',
@@ -438,6 +473,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dp-strings',
+    deps: ['dp-lis'],
     name: 'DP on Strings',
     group: 'Dynamic programming',
     corePattern: 'dynamic-programming',
@@ -455,6 +491,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dp-stocks',
+    deps: ['dp-knapsack-01'],
     name: 'DP on Stocks',
     group: 'Dynamic programming',
     corePattern: 'dynamic-programming',
@@ -468,6 +505,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'dp-partition',
+    deps: ['dp-strings'],
     name: 'Partition DP (MCM)',
     group: 'Dynamic programming',
     corePattern: 'dynamic-programming',
@@ -480,6 +518,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'topological-sort',
+    deps: ['bfs', 'dfs'],
     name: 'Topological Sort',
     group: 'Graphs',
     corePattern: 'topological-sort',
@@ -493,6 +532,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'union-find',
+    deps: ['dfs'],
     name: 'Union-Find',
     group: 'Graphs',
     corePattern: 'union-find',
@@ -505,6 +545,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'graph-shortest-path',
+    deps: ['bfs', 'top-k-elements'],
     name: 'Shortest Paths and MST',
     group: 'Graphs',
     corePattern: 'graphs',
@@ -517,6 +558,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'greedy',
+    deps: ['overlapping-intervals', 'top-k-elements'],
     name: 'Greedy',
     group: 'Greedy',
     corePattern: 'greedy',
@@ -532,6 +574,7 @@ export const LADDER: LadderRung[] = [
   },
   {
     id: 'design-data-structure',
+    deps: ['linked-list-reversal', 'top-k-elements'],
     name: 'Design a Data Structure',
     group: 'Design',
     corePattern: 'design',

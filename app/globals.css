@@ -302,6 +302,113 @@
 /* Roadmap tree. Nodes are absolutely placed on a pannable stage, so the layout
    math lives here rather than in utility classes. */
 @layer components {
+  /* Prerequisite maps (practice ladder, roadmap): depth rows in a grid on a
+     normal scrolling page, edges in an SVG overlay. A hovered or selected node
+     lights its whole lineage; everything else steps back. Locked nodes keep
+     full-contrast text: the dashed edge and the lock glyph carry "later", not
+     an opacity drop that turns most of the map grey. */
+  .dag {
+    @apply relative;
+    background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+  .dag-edges {
+    @apply pointer-events-none absolute inset-0 hidden overflow-visible md:block;
+  }
+  .dag-edges path {
+    fill: none;
+    stroke: hsl(var(--rm-edge));
+    stroke-width: 1.5;
+    /* Quiet at rest: the rows already say what follows what. Hover lights
+       one lineage at full strength. */
+    opacity: 0.22;
+    transition:
+      opacity 0.2s ease-out,
+      stroke 0.2s ease-out,
+      stroke-width 0.2s ease-out;
+  }
+  .dag-edges path.open {
+    stroke: hsl(var(--primary));
+  }
+  .dag.focused .dag-edges path {
+    opacity: 0.12;
+  }
+  .dag.focused .dag-edges path.lit {
+    stroke: hsl(var(--primary));
+    stroke-width: 2.25;
+    opacity: 1;
+  }
+  .dag-row {
+    @apply relative grid justify-center gap-3 px-4 py-4;
+    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 15rem));
+  }
+  .dag-row + .dag-row {
+    @apply border-t border-border/50;
+  }
+  .dag-node {
+    @apply relative flex min-h-[4.75rem] cursor-pointer flex-col gap-1.5 rounded-[var(--radius)] border border-border-strong bg-surface px-3.5 pb-3 pt-3 text-left;
+    transition:
+      border-color 0.2s ease-out,
+      background-color 0.2s ease-out,
+      box-shadow 0.2s ease-out,
+      opacity 0.2s ease-out,
+      transform 0.14s ease-out;
+  }
+  .dag-node:hover {
+    @apply border-primary;
+    transform: translateY(-1px);
+  }
+  .dag-node:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  .dag-node.selected {
+    @apply border-primary;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.28);
+  }
+  .dag-node.done {
+    @apply border-primary/50 bg-primary-soft;
+  }
+  .dag-node.next {
+    box-shadow:
+      0 0 0 1.5px hsl(var(--warning)),
+      0 0 22px -6px hsl(var(--warning));
+  }
+  .dag-node.locked {
+    @apply border-dashed border-border;
+  }
+  .dag.focused .dag-node:not(.lit) {
+    opacity: 0.45;
+  }
+  .dag-node-title {
+    @apply font-display text-[0.9375rem] font-semibold leading-snug tracking-tight;
+  }
+  .dag-node-meta {
+    @apply flex items-center justify-between gap-2 text-[0.8125rem] leading-none text-muted-foreground;
+  }
+  .dag-node-bar {
+    @apply mt-auto h-[3px] overflow-hidden rounded-full bg-muted;
+  }
+  .dag-node-bar i {
+    @apply block h-full rounded-full bg-primary;
+    transition: width 0.3s ease-out;
+  }
+  .dag-node.done .dag-node-bar i {
+    width: 100% !important;
+  }
+  .dag-node-check {
+    @apply absolute -right-2 -top-2 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dag-edges path,
+    .dag-node,
+    .dag-node-bar i {
+      transition: none;
+    }
+    .dag-node:hover {
+      transform: none;
+    }
+  }
+
   .rm-stage-wrap {
     @apply absolute inset-0 overflow-hidden;
     cursor: grab;
