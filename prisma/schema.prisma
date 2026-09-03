@@ -17,11 +17,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  repos     Repo[]
-  revisions Revision[]
-  accounts  Account[]
-  sessions  Session[]
-  roadmap   RoadmapProgress?
+  repos       Repo[]
+  revisions   Revision[]
+  accounts    Account[]
+  sessions    Session[]
+  roadmap     RoadmapProgress?
+  practice    PracticeAttempt[]
+  diagnostics DiagnosticItem[]
 
   @@index([email])
 }
@@ -193,4 +195,58 @@ model RoadmapProgress {
   state     Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// A first attempt at a ladder problem (lib/pattern-ladder.ts). Deliberately not
+// a Problem row: nothing here lives in the user's repo, there is no file to
+// diff and no solution to reveal, and a ladder problem that later shows up in a
+// sync must not be double-counted as solved.
+model PracticeAttempt {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Rung id from the ladder catalog, not a lib/constants pattern value.
+  rungId        String
+  slug          String
+  tier          String
+  difficulty    String
+  /// unaided | hinted | editorial | failed — see lib/practice.ts. The whole
+  /// readiness rule rests on this column, so it is never nullable.
+  outcome       String
+  durationSec   Int?
+  /// What the pattern was called before the editor was opened, when asked.
+  patternGuess  String?
+  notes         String?   @db.Text
+  /// When a non-unaided attempt has to be re-derived from blank; null once paid.
+  debtDueAt     DateTime?
+  debtClearedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, rungId, createdAt])
+  @@index([userId, slug])
+  @@index([userId, debtDueAt])
+}
+
+// One statement from a blind diagnostic run. Stored per item rather than per run
+// so recognition can be read per pattern, which is how a rung's blind check is
+// computed without replaying whole sessions.
+model DiagnosticItem {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  runId   String
+  slug    String
+  rungId  String
+  /// The lib/constants pattern the statement actually trains.
+  pattern String
+  guess   String?
+  correct Boolean
+  seconds Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, pattern, createdAt])
+  @@index([userId, runId])
 }

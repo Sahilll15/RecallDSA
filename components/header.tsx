@@ -21,6 +21,7 @@ export function Header({
   const links = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/problems', label: 'Problems' },
+    { href: '/practice', label: 'Practice' },
     { href: '/revision', label: 'Revision' },
     { href: '/design', label: 'Design' },
     { href: '/roadmap', label: 'Roadmap' },

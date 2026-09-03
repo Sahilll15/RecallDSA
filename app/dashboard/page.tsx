@@ -7,6 +7,9 @@ import { dedupeRevisionQueue } from '@/lib/revision-queue';
 import { buildActivityCalendar } from '@/lib/activity';
 import { PROJECTS } from '@/lib/roadmap/catalog';
 import { mergeProgress, summarizeOverview } from '@/lib/roadmap/progress';
+import { loadPracticeState } from '@/lib/practice-store';
+import { rungById } from '@/lib/pattern-ladder';
+import type { PracticeSummary } from '@/components/practice/practice-tile';
 import { DashboardClient, type PatternReadiness } from './dashboard-client';
 
 export default async function DashboardPage() {
@@ -58,7 +61,7 @@ export default async function DashboardPage() {
   const activitySince = new Date(today);
   activitySince.setDate(activitySince.getDate() - (activityWindowDays - 1));
 
-  const [allRevisions, recentAttempts, mistakeConcepts, activityStamps, roadmapRow] =
+  const [allRevisions, recentAttempts, mistakeConcepts, activityStamps, roadmapRow, practice] =
     await Promise.all([
       prisma.revision.findMany({
         where: { userId },
@@ -99,12 +102,44 @@ export default async function DashboardPage() {
         where: { userId },
         select: { state: true },
       }),
+      loadPracticeState(userId),
     ]);
 
   const roadmap = summarizeOverview(
     mergeProgress(roadmapRow?.state ?? null),
     PROJECTS.map((p) => p.id),
   );
+
+  // The rung nearest ready that still has something to open, so the tile can
+  // name one action instead of a percentage.
+  const focusRung = practice.readiness
+    .filter((r) => r.status === 'in-progress' && r.nextProblem)
+    .sort((a, b) => b.met - a.met)[0];
+
+  const practiceSummary: PracticeSummary = {
+    rungsReady: practice.totals.readyRungs,
+    rungsTotal: practice.readiness.length,
+    solvedUnaided: practice.totals.solvedUnaided,
+    attempted: practice.totals.attempted,
+    openDebts: practice.totals.openDebts,
+    recognitionRate:
+      practice.totals.diagnosticsSeen > 0
+        ? Math.round(
+            (practice.totals.diagnosticsCorrect / practice.totals.diagnosticsSeen) * 100,
+          )
+        : null,
+    diagnosticsSeen: practice.totals.diagnosticsSeen,
+    focus:
+      focusRung && focusRung.nextProblem
+        ? {
+            name: rungById(focusRung.rungId)?.name ?? focusRung.rungId,
+            met: focusRung.met,
+            total: focusRung.total,
+            nextTitle: focusRung.nextProblem.title,
+            slug: focusRung.nextProblem.slug,
+          }
+        : null,
+  };
 
   const activity = buildActivityCalendar(
     activityStamps.map((a) => a.createdAt),
@@ -192,6 +227,7 @@ export default async function DashboardPage() {
       problemsByDifficulty={problemsByDifficulty}
       activity={activity}
       roadmap={roadmap}
+      practice={practiceSummary}
     />
   );
 }

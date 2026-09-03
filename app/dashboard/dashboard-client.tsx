@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { Footer } from '@/components/footer';
 import { RoadmapTile } from '@/components/roadmap/roadmap-tile';
+import { PracticeTile, type PracticeSummary } from '@/components/practice/practice-tile';
 import type { RoadmapOverview } from '@/lib/roadmap/progress';
 
 export interface PatternReadiness {
@@ -73,6 +74,7 @@ interface DashboardClientProps {
   }>;
   activity: ActivityData;
   roadmap: RoadmapOverview;
+  practice: PracticeSummary;
 }
 
 const difficultyBars: Record<string, string> = {
@@ -88,6 +90,7 @@ export function DashboardClient({
   problemsByDifficulty,
   activity,
   roadmap,
+  practice,
 }: DashboardClientProps) {
   const weakPatterns = readiness.patterns
     .filter((p) => p.attempts >= 2 && p.struggles / p.attempts >= 0.5)
@@ -522,6 +525,8 @@ export function DashboardClient({
             </div>
           </>
         )}
+
+        <PracticeTile summary={practice} delay={0.18} />
 
         <RoadmapTile overview={roadmap} delay={0.2} />
       </main>

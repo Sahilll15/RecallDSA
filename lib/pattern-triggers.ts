@@ -96,6 +96,41 @@ export const PATTERN_TRIGGERS: PatternTrigger[] = [
     mechanism: 'Keep only what matters in a size-k heap so each step costs log k, not n.',
   },
   {
+    pattern: 'fast-slow-pointer',
+    features:
+      'A linked list or an implicit successor function, and the question is about a cycle, a midpoint, or the nth node from the end, with no extra space allowed.',
+    mechanism:
+      'Two pointers one step and two steps per tick meet inside a cycle, and land the slow one at the midpoint when the fast one runs out.',
+  },
+  {
+    pattern: 'cyclic-sort',
+    features:
+      'n numbers drawn from a range close to 1..n, and you want the missing one, the duplicate, or both, in place and in linear time.',
+    mechanism:
+      'Every value has one rightful index, so swap each value home and read off whichever index disagrees.',
+  },
+  {
+    pattern: 'k-way-merge',
+    features:
+      'Several already-sorted lists, rows, or streams, and you want one ordered sequence out of all of them, or the kth smallest across them.',
+    mechanism:
+      'A heap of one candidate per list always holds the global next element, so each pop advances only its own list.',
+  },
+  {
+    pattern: 'two-heaps',
+    features:
+      'A running median, or a stream you keep splitting into a cheap half and an expensive half as values arrive.',
+    mechanism:
+      'A max-heap of the lower half against a min-heap of the upper half, rebalanced by one, keeps the middle at both tops.',
+  },
+  {
+    pattern: 'design',
+    features:
+      'The problem names a class and its methods rather than a return value, and states a complexity target per operation.',
+    mechanism:
+      'Pick the structure each operation needs and keep them in sync; the answer is usually a hash map paired with a list, heap, or linked list.',
+  },
+  {
     pattern: 'linked-list',
     features:
       'Nodes and pointers, reversal in place, cycle detection, or finding a position from the end.',

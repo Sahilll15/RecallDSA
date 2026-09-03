@@ -15,9 +15,12 @@ describe('PATTERN_TRIGGERS', () => {
     expect(seen.size).toBe(PATTERN_TRIGGERS.length);
   });
 
-  it('stays inside the few-minutes-a-day budget the method calls for', () => {
+  // The drill deals ten cards a sitting (app/revision/triggers), so this caps
+  // the catalog rather than the session: one card per pattern the ladder trains,
+  // and no card for a pattern the app cannot file a problem under.
+  it('keeps one short card per pattern rather than growing into a textbook', () => {
     expect(PATTERN_TRIGGERS.length).toBeGreaterThanOrEqual(15);
-    expect(PATTERN_TRIGGERS.length).toBeLessThanOrEqual(30);
+    expect(PATTERN_TRIGGERS.length).toBeLessThanOrEqual(PATTERNS.length);
   });
 
   it('describes features and a mechanism on every card', () => {

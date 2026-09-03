@@ -24,8 +24,9 @@ Two skills, actually, and RecallDSA measures them separately:
 
 | Skill | The question it answers | Where it shows up |
 |---|---|---|
-| **Recognition** | "I'm minimizing a maximum and feasibility is monotonic. That's binary search on answer." | Pattern recognition rate |
+| **Recognition** | "I'm minimizing a maximum and feasibility is monotonic. That's binary search on answer." | Pattern recognition rate, blind diagnostic |
 | **Reconstruction** | "Given the pattern, can I derive the feasibility check myself?" | Recall rate, hints used, time to solve |
+| **Acquisition** | "Can I solve one I have never seen, without reading the answer?" | Practice ladder, unaided streak |
 
 You can pass the first and fail the second. The dashboard tells you which one is actually weak.
 
@@ -89,6 +90,58 @@ The queue refreshes itself when you return to the tab, and a commit backfill run
 That matters because a solve date is not a sync date. A problem you finished five days ago and never revisited is genuinely overdue; one you solved this morning shouldn't be in today's queue at all. The first review lands a day after the solve, so the queue naturally orders itself oldest-first, and today's work waits until tomorrow.
 
 It also collapses duplicates, everywhere, not just on import. LeetHub and LeetSync both commit the same solution under different folder namings (`0875-koko-eating-bananas/0875-koko-eating-bananas.cpp` and `875-koko-eating-bananas/koko-eating-bananas.cpp`, sometimes under different problem numbers), which would otherwise queue the same problem two or three times. A directory naming a topic (`backtracking/`) is told apart from one naming a problem (`0046-permutations/`), a pattern comes from the judge's own topic tags rather than guessed from the path, and a banner surfaces any duplicate cards still left over from before this existed, with a one-click cleanup that keeps whichever copy holds the review history.
+
+---
+
+## Practice ladder
+
+Everything above measures problems you already solved. The ladder is the other half: **188 problems you have not**, taken from [DSA Patterns you need to know](https://leetcode.com/discuss/post/5886397/) and re-cut into 37 rungs, one per trigger you have to spot.
+
+Each rung is climbed in tiers rather than in difficulty order:
+
+| Tier | What it is for |
+|---|---|
+| **Anchor** | Learn the mechanism. Reading the editorial here is fine. |
+| **Rep** | The same mechanism with the details moved. Must be unaided. |
+| **Twist** | The mechanism disguised, or combined with a second one. |
+| **Boss** | The hard variant that proves the rung. |
+
+### The outcome is not "solved"
+
+A solve you derived and a solve you read are different events, so they are stored as different events: **unaided**, **hinted**, **editorial**, **failed**. Only unaided counts toward readiness, and everything else books a **re-derive** a day or three out. Reading the answer stops being a lie you tell your solve count and becomes a debt with a due date.
+
+### The stopping rule
+
+A first attempt runs on a timer that spends its budget in a fixed order, so an attempt ends in either a solve or a logged debt, never an open-ended stall. Hints and the editorial stay locked until the clock reaches them.
+
+```
+0-20%    restate the problem, write the brute force   no editor
+20-40%   name the pattern and its trigger             no editor
+40-100%  implement
++40%     one hint
+after    read it, close it, re-derive from blank
+```
+
+The budget is 15, 25 or 40 minutes by difficulty.
+
+---
+
+## Am I ready for this topic?
+
+The question that a solve count cannot answer. Every rung answers it as six checks rather than a score, and each unmet check names the next move:
+
+- **Four problems in a row solved unaided.** One hint resets it to zero.
+- **Pattern named on four of the last five blind statements.**
+- **Solving inside the time budget**, judged per problem, not against one global number.
+- **A twist or boss problem solved unaided.**
+- **Nothing lapsed in the recall queue for 14 days.**
+- **No unpaid re-derives.**
+
+## Blind diagnostic
+
+Ten real statements with the title, number and topic tags stripped, one minute each. Name the pattern, no coding, and no feedback until the run ends so an early miss cannot steer the rest of it.
+
+It only draws problems you have never solved or attempted, and it is graded on the server, so the answer never reaches the browser before your guess is in. This is the only recognition figure in the app taken on a problem that arrives with no heading above it, which is the thing an interview actually tests. Running out of time counts as a miss.
 
 ---
 
@@ -168,13 +221,19 @@ app/
   api/                REST routes: problems, revisions, repos, mistakes, cron, webhook
   revision/recall/    the staged recall session
   revision/triggers/  the pattern-trigger drill
+  practice/           the ladder, the timed solve session, the blind diagnostic
   dashboard/          readiness metrics, computed server-side
 lib/
   spaced-repetition.ts    the SM-2-derived scheduler (pure, unit tested)
   problem-identity.ts     canonical problem identity — the one dedup source of truth
   revision-queue.ts       collapses duplicate revisions, keeping the one with history
   pattern-detection.ts    topic-tag classification, path heuristics as fallback
-  pattern-triggers.ts     the 28-card trigger deck and weakness-based drill order
+  pattern-triggers.ts     the trigger deck and weakness-based drill order
+  pattern-ladder.ts       the 37-rung, 188-problem practice catalog, tiered
+  practice.ts             solve outcomes, re-derive debts, the readiness rule (unit tested)
+  solve-protocol.ts       the phase timer's budget split (unit tested)
+  diagnostic.ts           blind-deck construction and blindfolding (unit tested)
+  practice-store.ts       Prisma reads that assemble readiness per rung
   leetcode.ts             LeetCode GraphQL client, cached
   activity.ts             streak and consistency-calendar math
   streak-reminder.ts      streak-risk assessment and the reminder email template
@@ -183,7 +242,8 @@ lib/
   github.ts               tree walking, path parsing, commit dates
   app-url.ts              resolves the app's real origin for outbound email links
   auth.ts                 NextAuth config
-prisma/schema.prisma      User, Repo, Problem, Revision, RecallNote, Attempt, Mistake
+prisma/schema.prisma      User, Repo, Problem, Revision, RecallNote, Attempt, Mistake,
+                          PracticeAttempt, DiagnosticItem
 ```
 
 ---

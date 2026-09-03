@@ -34,6 +34,7 @@ export const PATTERNS = [
   { value: "arrays", label: "Arrays" },
   { value: "strings", label: "Strings" },
   { value: "two-pointers", label: "Two Pointers" },
+  { value: "fast-slow-pointer", label: "Fast and Slow Pointer" },
   { value: "sliding-window", label: "Sliding Window" },
   { value: "binary-search", label: "Binary Search" },
   { value: "binary-search-on-answer", label: "Binary Search on Answer" },
@@ -48,10 +49,13 @@ export const PATTERNS = [
   { value: "dynamic-programming", label: "Dynamic Programming" },
   { value: "greedy", label: "Greedy" },
   { value: "sorting", label: "Sorting" },
+  { value: "cyclic-sort", label: "Cyclic Sort" },
   { value: "intervals", label: "Intervals" },
   { value: "trees", label: "Trees" },
   { value: "bst", label: "Binary Search Tree" },
   { value: "heap", label: "Heap / Priority Queue" },
+  { value: "k-way-merge", label: "K-way Merge" },
+  { value: "two-heaps", label: "Two Heaps" },
   { value: "trie", label: "Trie" },
   { value: "graphs", label: "Graphs" },
   { value: "bfs", label: "BFS" },
@@ -61,6 +65,7 @@ export const PATTERNS = [
   { value: "bit-manipulation", label: "Bit Manipulation" },
   { value: "math", label: "Math" },
   { value: "matrix", label: "Matrix" },
+  { value: "design", label: "Design a Data Structure" },
 ] as const
 
 export function patternLabel(value: string | null | undefined): string {
