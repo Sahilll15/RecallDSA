@@ -3,30 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowRight,
-  Crosshair,
-  Gauge,
-  GitBranch,
-  ListChecks,
-  Rows3,
-  Timer,
-  TrendingUp,
-} from 'lucide-react';
+import { ArrowRight, GitBranch, ListChecks, Rows3, Timer } from 'lucide-react';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { AnimatedBackground } from '@/components/ui/animated-background';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MetricStrip } from '@/components/ui/metric-strip';
 import { DebtList, type DebtItem } from '@/components/practice/debt-list';
 import { LadderMap } from '@/components/practice/ladder-map';
+import { PracticePanel, type PracticePanelData } from '@/components/practice/practice-panel';
 import { RungCard, type RungProgress } from '@/components/practice/rung-card';
-import { RungDrawer, type LastTick } from '@/components/practice/rung-drawer';
+import { RungDrawer, type LastTick, type PrereqCard } from '@/components/practice/rung-drawer';
 import { groupedLadder, ladderProblem, rungById, type LadderProblem } from '@/lib/pattern-ladder';
 import { rungStandings } from '@/lib/ladder-graph';
 import type { RungReadiness, SolveOutcome } from '@/lib/practice';
-import { DECK_SIZE } from '@/lib/diagnostic';
 import { cn } from '@/lib/utils';
 
 interface PracticeClientProps {
@@ -34,6 +24,7 @@ interface PracticeClientProps {
   readiness: RungReadiness[];
   progress: Record<string, RungProgress>;
   debts: DebtItem[];
+  panel: PracticePanelData;
   totals: {
     attempted: number;
     solvedUnaided: number;
@@ -54,7 +45,7 @@ export function PracticeClient({
   readiness,
   progress: serverProgress,
   debts,
-  totals,
+  panel,
 }: PracticeClientProps) {
   const router = useRouter();
   const byRungId = useMemo(() => new Map(readiness.map((r) => [r.rungId, r])), [readiness]);
@@ -114,7 +105,6 @@ export function PracticeClient({
       const rungId = found.rung.id;
 
       setPending((s) => new Set(s).add(problem.slug));
-      // Optimistic: an unaided tick clears it, anything else marks it owed.
       mutate(rungId, (entry) =>
         outcome === 'unaided'
           ? {
@@ -138,7 +128,6 @@ export function PracticeClient({
         setLastTick({ slug: problem.slug, attemptId: data.attempt.id, outcome });
         router.refresh();
       } catch {
-        // Revert to the last server truth rather than guessing.
         setProgress(serverProgress);
       } finally {
         setPending((s) => {
@@ -173,13 +162,18 @@ export function PracticeClient({
   const selectedRung = selected ? rungById(selected) ?? null : null;
   const selectedStanding = selected ? standings.get(selected) ?? null : null;
   const selectedChecks = selected ? byRungId.get(selected)?.checks ?? [] : [];
+  const selectedPrereqs = useMemo<PrereqCard[]>(
+    () =>
+      (selectedRung?.deps ?? []).map((id) => ({
+        id,
+        name: rungById(id)?.name ?? id,
+        cleared: standings.get(id)?.anchorsCleared ?? false,
+      })),
+    [selectedRung, standings],
+  );
 
-  const totalRungs = readiness.length;
   const completeRungs = [...standings.values()].filter((s) => s.state === 'complete').length;
-  const recognitionRate =
-    totals.diagnosticsSeen > 0
-      ? Math.round((totals.diagnosticsCorrect / totals.diagnosticsSeen) * 100)
-      : null;
+  const panelData: PracticePanelData = { ...panel, rungsComplete: completeRungs };
 
   // The one thing to do next: an in-progress rung nearest ready, else an open root.
   const started = readiness.filter((r) => r.status === 'in-progress' && r.nextProblem);
@@ -198,16 +192,15 @@ export function PracticeClient({
           <div className="space-y-2">
             <p className="eyebrow flex items-center gap-1.5">
               <ListChecks className="h-3.5 w-3.5 text-primary" />
-              Practice ladder
+              Practice
             </p>
             <h1 className="font-display text-3xl font-semibold tracking-tight">
               Problems you have not solved yet
             </h1>
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              188 problems in 37 rungs, in prerequisite order. Tick a problem once you have
-              solved it without help; a rung opens the ones below it when its anchors are done.
-              Only an unaided solve counts, and anything you read the answer to comes back as a
-              re-derive.
+              188 problems in 37 rungs, in a recommended order. Open a rung and tick a problem
+              once you have solved it without help. Only an unaided solve counts, and anything
+              you read the answer to comes back as a re-derive.
             </p>
           </div>
 
@@ -242,67 +235,14 @@ export function PracticeClient({
           </div>
         </header>
 
-        <MetricStrip
-          metrics={[
-            {
-              label: 'Rungs complete',
-              value: `${completeRungs}/${totalRungs}`,
-              sub: `${totals.readyRungs} pass every readiness check`,
-              icon: Gauge,
-              tone: completeRungs > 0 ? 'text-primary' : undefined,
-            },
-            {
-              label: 'Solved unaided',
-              value: totals.solvedUnaided,
-              sub: `of ${totals.attempted} attempted`,
-              icon: TrendingUp,
-            },
-            {
-              label: 'Blind recognition',
-              value: recognitionRate === null ? '--' : `${recognitionRate}%`,
-              sub:
-                totals.diagnosticsSeen === 0
-                  ? 'no statements seen'
-                  : `${totals.diagnosticsSeen} statements`,
-              icon: Crosshair,
-            },
-            {
-              label: 'Re-derives owed',
-              value: totals.openDebts,
-              sub: totals.openDebts === 0 ? 'nothing owed' : 'read, not derived',
-              icon: Timer,
-              tone: totals.openDebts > 0 ? 'text-warning' : undefined,
-            },
-          ]}
-        />
-
         {view === 'tree' ? (
-          <LadderMap standings={standings} selected={selected} onSelect={setSelected} />
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <LadderMap standings={standings} selected={selected} onSelect={setSelected} />
+            <PracticePanel data={panelData} />
+          </div>
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Card interactive>
-            <CardContent className="flex h-full flex-col justify-between gap-4 p-5">
-              <div className="space-y-1">
-                <p className="eyebrow flex items-center gap-1.5">
-                  <Crosshair className="h-3.5 w-3.5 text-primary" />
-                  Blind diagnostic
-                </p>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {DECK_SIZE} real statements with the topic hidden, one minute each. Name the
-                  pattern, no coding. The only reading here taken on problems you have never
-                  seen.
-                </p>
-              </div>
-              <Link href="/practice/diagnostic" className="self-start">
-                <Button>
-                  Run it
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
           {suggestion?.nextProblem ? (
             <Card className="border-primary/30">
               <CardContent className="flex h-full flex-col justify-between gap-4 p-5">
@@ -314,7 +254,7 @@ export function PracticeClient({
                     {suggestion.total} checks met
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Link href={`/practice/solve/${suggestion.nextProblem.slug}`}>
                     <Button>
                       <Timer className="h-4 w-4" />
@@ -323,6 +263,7 @@ export function PracticeClient({
                   </Link>
                   <Button variant="outline" onClick={() => setSelected(suggestion.rungId)}>
                     Open rung
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -330,13 +271,13 @@ export function PracticeClient({
           ) : (
             <Card>
               <CardContent className="flex h-full items-center p-5 text-sm text-muted-foreground">
-                Every open rung is complete. Pick a locked one from the tree and carry on.
+                Every open rung is complete. Pick a waiting one from the tree and carry on.
               </CardContent>
             </Card>
           )}
-        </div>
 
-        <DebtList debts={debts} />
+          <DebtList debts={debts} />
+        </div>
 
         {view === 'list' &&
           groups.map((group) => (
@@ -363,6 +304,7 @@ export function PracticeClient({
       <RungDrawer
         rung={selectedRung}
         standing={selectedStanding}
+        prereqs={selectedPrereqs}
         checks={selectedChecks}
         cleared={clearedSlugs}
         owed={owedSlugs}

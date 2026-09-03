@@ -339,14 +339,14 @@
     opacity: 1;
   }
   .dag-row {
-    @apply relative grid justify-center gap-3 px-4 py-4;
-    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 15rem));
+    @apply relative grid justify-center gap-x-3 gap-y-2.5 px-3 py-3;
+    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 11.75rem));
   }
   .dag-row + .dag-row {
     @apply border-t border-border/50;
   }
   .dag-node {
-    @apply relative flex min-h-[4.75rem] cursor-pointer flex-col gap-1.5 rounded-[var(--radius)] border border-border-strong bg-surface px-3.5 pb-3 pt-3 text-left;
+    @apply relative flex min-h-[2.875rem] cursor-pointer flex-col gap-1.5 rounded-md border border-border-strong bg-surface px-3 pb-2 pt-2 text-left;
     transition:
       border-color 0.2s ease-out,
       background-color 0.2s ease-out,
@@ -380,10 +380,10 @@
     opacity: 0.45;
   }
   .dag-node-title {
-    @apply font-display text-[0.9375rem] font-semibold leading-snug tracking-tight;
+    @apply flex items-center gap-1.5 font-display text-[0.8125rem] font-semibold leading-snug tracking-tight;
   }
   .dag-node-meta {
-    @apply flex items-center justify-between gap-2 text-[0.8125rem] leading-none text-muted-foreground;
+    @apply flex items-center justify-between gap-2 text-[0.75rem] leading-none text-muted-foreground;
   }
   .dag-node-bar {
     @apply mt-auto h-[3px] overflow-hidden rounded-full bg-muted;
@@ -396,7 +396,7 @@
     width: 100% !important;
   }
   .dag-node-check {
-    @apply absolute -right-2 -top-2 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground;
+    @apply absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-primary text-primary-foreground;
   }
   @media (prefers-reduced-motion: reduce) {
     .dag-edges path,

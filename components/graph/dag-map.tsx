@@ -7,11 +7,11 @@ import { edgesOf, layerNodes, lineage } from '@/lib/dag-layout';
 import { cn } from '@/lib/utils';
 
 /**
- * A prerequisite graph drawn as rows on a normal page. Every node is a real
- * button at body size, so the map reads without panning or zooming; edges are
- * an SVG overlay measured from the rendered nodes. Hovering or selecting a node
- * lights its lineage and steps everything else back, which is how 37 nodes
- * stay legible without hiding any of them.
+ * A prerequisite graph drawn as rows of compact pills, the way a course
+ * roadmap is usually drawn: title and a progress bar, nothing else on the node,
+ * so the whole tree fits one panel. Edges are an SVG overlay measured from the
+ * rendered nodes. Hovering or selecting a node lights its lineage and steps
+ * everything else back; the detail lives in the drawer the click opens.
  */
 
 export type DagState = 'locked' | 'next' | 'active' | 'done';
@@ -20,14 +20,14 @@ export interface DagNode {
   id: string;
   deps: string[];
   title: string;
-  /** Left-hand reading under the title: "3 of 7 solved", "~14h". */
+  /** Spoken to screen readers and shown as the tooltip: "3 of 7 solved". */
   meta: string;
-  /** Right-hand reading: a level mark, a count, anything small. */
+  /** Small right-hand mark inside the pill: a level diamond, a count. */
   aside?: ReactNode;
   state: DagState;
   /** 0 to 1. The bar under the title. */
   progress: number;
-  /** Set when the edge INTO this node's children should read as open. */
+  /** Set when edges out of this node should read as open. */
   opensNext?: boolean;
 }
 
@@ -38,7 +38,7 @@ interface DagMapProps {
   /** Changes whenever a node should be scrolled into view. */
   focus?: { id: string; n: number } | null;
   className?: string;
-  /** Rendered in the top-left corner over the map. */
+  /** Rendered across the top of the map. */
   legend?: ReactNode;
 }
 
@@ -58,12 +58,13 @@ export function DagMap({ nodes, selected, onSelect, focus, className, legend }: 
   const nodeEls = useRef<Record<string, HTMLButtonElement | null>>({});
   const [edges, setEdges] = useState<Edge[]>([]);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
 
   const focusId = hovered ?? selected;
   const lit = useMemo(() => (focusId ? lineage(nodes, focusId) : null), [nodes, focusId]);
 
   // Edges leave the bottom centre of a parent and land on the top centre of a
-  // child. Measured from the DOM so a two-line title still meets the card edge.
+  // child, measured from the DOM so a wrapped title still meets the pill edge.
   const computeEdges = useCallback(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
@@ -97,7 +98,10 @@ export function DagMap({ nodes, selected, onSelect, focus, className, legend }: 
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
-    const ro = new ResizeObserver(() => computeEdges());
+    const ro = new ResizeObserver(([entry]) => {
+      setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+      computeEdges();
+    });
     ro.observe(wrap);
     if (document.fonts?.ready) document.fonts.ready.then(computeEdges);
     return () => ro.disconnect();
@@ -109,17 +113,6 @@ export function DagMap({ nodes, selected, onSelect, focus, className, legend }: 
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     el?.focus({ preventScroll: true });
   }, [focus]);
-
-  const [size, setSize] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
-    const ro = new ResizeObserver(([entry]) => {
-      setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
-    });
-    ro.observe(wrap);
-    return () => ro.disconnect();
-  }, []);
 
   return (
     <div
@@ -146,7 +139,7 @@ export function DagMap({ nodes, selected, onSelect, focus, className, legend }: 
 
       {legend && <div className="relative z-[1] px-4 pt-3">{legend}</div>}
 
-      <div className="relative z-[1] py-2">
+      <div className="relative z-[1] py-1">
         {rows.map((row, depth) => (
           <div key={depth} className="dag-row">
             {row.map((id) => {
@@ -172,18 +165,18 @@ export function DagMap({ nodes, selected, onSelect, focus, className, legend }: 
                   onBlur={() => setHovered(null)}
                   aria-pressed={selected === id}
                   aria-label={`${node.title}, ${node.meta}${node.state === 'locked' ? ', waiting on a prerequisite' : ''}`}
+                  title={node.meta}
                 >
                   {node.state === 'done' && (
                     <span className="dag-node-check" aria-hidden>
-                      <Check className="h-3 w-3" strokeWidth={3} />
+                      <Check className="h-2.5 w-2.5" strokeWidth={3} />
                     </span>
                   )}
-                  <span className="dag-node-title">{node.title}</span>
-                  <span className="dag-node-meta">
-                    <span className="flex items-center gap-1.5">
-                      {node.state === 'locked' && <Lock className="h-3 w-3 shrink-0" aria-hidden />}
-                      <span data-numeric>{node.meta}</span>
-                    </span>
+                  <span className="dag-node-title">
+                    {node.state === 'locked' && (
+                      <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+                    )}
+                    <span className="min-w-0 flex-1">{node.title}</span>
                     {node.aside}
                   </span>
                   <span className="dag-node-bar" aria-hidden>

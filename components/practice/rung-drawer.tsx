@@ -27,6 +27,37 @@ const TIER_TONE: Record<string, string> = {
   boss: 'text-destructive',
 };
 
+/** The small progress ring in the drawer header. */
+function RungRing({ solved, total }: { solved: number; total: number }) {
+  const R = 20;
+  const C = 2 * Math.PI * R;
+  const pct = total > 0 ? solved / total : 0;
+  return (
+    <span className="relative h-12 w-12 shrink-0" aria-hidden>
+      <svg width="48" height="48" className="-rotate-90">
+        <circle cx="24" cy="24" r={R} fill="none" strokeWidth="4" className="stroke-muted" />
+        <circle
+          cx="24"
+          cy="24"
+          r={R}
+          fill="none"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={C}
+          strokeDashoffset={C * (1 - pct)}
+          className="stroke-primary transition-[stroke-dashoffset] duration-500 ease-out"
+        />
+      </svg>
+      <span
+        data-numeric
+        className="absolute inset-0 grid place-items-center font-mono text-[0.6875rem] text-muted-foreground"
+      >
+        {Math.round(pct * 100)}%
+      </span>
+    </span>
+  );
+}
+
 /** Outcomes offered behind the tick. Unaided is the tick itself. */
 const OTHER_OUTCOMES: SolveOutcome[] = ['hinted', 'editorial', 'failed'];
 
@@ -36,9 +67,16 @@ export interface LastTick {
   outcome: SolveOutcome;
 }
 
+export interface PrereqCard {
+  id: string;
+  name: string;
+  cleared: boolean;
+}
+
 interface RungDrawerProps {
   rung: LadderRung | null;
   standing: RungStanding | null;
+  prereqs: PrereqCard[];
   checks: ReadinessCheck[];
   cleared: Set<string>;
   owed: Set<string>;
@@ -57,6 +95,7 @@ interface RungDrawerProps {
 export function RungDrawer({
   rung,
   standing,
+  prereqs,
   checks,
   cleared,
   owed,
@@ -126,27 +165,59 @@ export function RungDrawer({
                 )}
               </div>
 
-              <h2 className="pr-8 font-display text-2xl font-semibold leading-tight tracking-tight">
-                {rung.name}
-              </h2>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                <span data-numeric>
-                  {standing.solvedUnaided}/{standing.total}
-                </span>{' '}
-                solved unaided
-                {patternLabel(rung.corePattern) !== rung.name && (
-                  <> &middot; trains {patternLabel(rung.corePattern)}</>
-                )}
-              </p>
+              <div className="flex items-start gap-4">
+                <div className="min-w-0 flex-1">
+                  <h2 className="pr-8 font-display text-2xl font-semibold leading-tight tracking-tight">
+                    {rung.name}
+                  </h2>
+                  <p className="mt-1.5 text-sm text-muted-foreground">
+                    <span data-numeric>
+                      ({standing.solvedUnaided} / {standing.total})
+                    </span>{' '}
+                    solved unaided
+                    {patternLabel(rung.corePattern) !== rung.name && (
+                      <> &middot; trains {patternLabel(rung.corePattern)}</>
+                    )}
+                  </p>
+                </div>
+                <RungRing solved={standing.solvedUnaided} total={standing.total} />
+              </div>
 
-              {standing.blockedBy.length > 0 && (
-                <p className="mt-3 rounded-md border border-border bg-surface-raised px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                  Comes after{' '}
-                  {standing.blockedBy
-                    .map((id) => rungById(id)?.name ?? id)
-                    .join(' and ')}
-                  . Clear their anchors first, or carry on here anyway: the order is advice.
-                </p>
+              {prereqs.length > 0 && (
+                <div className="mt-4 space-y-1.5">
+                  <p className="text-xs text-muted-foreground">Comes after</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {prereqs.map((dep) => (
+                      <span
+                        key={dep.id}
+                        className={cn(
+                          'flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs',
+                          dep.cleared
+                            ? 'border-primary/30 bg-primary-soft text-foreground'
+                            : 'border-border bg-surface-raised text-muted-foreground',
+                        )}
+                      >
+                        <span className="truncate">{dep.name}</span>
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'grid h-3.5 w-3.5 shrink-0 place-items-center rounded-sm border',
+                            dep.cleared
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border-strong',
+                          )}
+                        >
+                          {dep.cleared && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                  {standing.blockedBy.length > 0 && (
+                    <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
+                      Clear their anchors first, or carry on here anyway. The order is advice.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
