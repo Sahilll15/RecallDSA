@@ -22,6 +22,7 @@ model User {
   accounts    Account[]
   sessions    Session[]
   roadmap     RoadmapProgress?
+  graphTrack  GraphTrackProgress?
   practice    PracticeAttempt[]
   diagnostics DiagnosticItem[]
 
@@ -189,6 +190,16 @@ model Mistake {
 // Learning-roadmap progress (trees, 30-day plans, portfolio projects) as one
 // document per user; the shape is owned by lib/roadmap/progress.ts.
 model RoadmapProgress {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  state     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Ticks on the graph track (lib/graph-track.ts): { done: { [slug]: true } }.
+model GraphTrackProgress {
   id        String   @id @default(cuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
