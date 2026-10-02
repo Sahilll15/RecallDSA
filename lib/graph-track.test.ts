@@ -28,6 +28,13 @@ describe('graph track catalog', () => {
     }
   });
 
+  it('gives every pattern a Python and a C++ template', () => {
+    for (const p of GRAPH_PATTERNS) {
+      expect(p.template.trim(), p.id).not.toBe('');
+      expect(p.cppTemplate.trim(), p.id).not.toBe('');
+    }
+  });
+
   it('points every signal at a real pattern', () => {
     for (const s of SIGNALS) expect(graphPatternById(s.pattern), s.pattern).toBeDefined();
   });

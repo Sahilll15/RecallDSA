@@ -34,7 +34,9 @@ export interface GraphPattern {
   /** Phrases or shapes in a problem statement that point at this pattern. */
   spotIt: string[];
   idea: string;
+  /** Python. */
   template: string;
+  cppTemplate: string;
   complexity: string;
   pitfalls: string[];
   problems: GraphProblem[];
@@ -152,6 +154,26 @@ for u in range(n):
     if u not in seen:
         dfs(u)
         components += 1`,
+    cppTemplate: `vector<vector<int>> graph(n);
+for (auto& e : edges) {
+    graph[e[0]].push_back(e[1]);
+    graph[e[1]].push_back(e[0]);  // drop for a directed graph
+}
+
+vector<bool> seen(n, false);
+function<void(int)> dfs = [&](int u) {
+    seen[u] = true;
+    for (int v : graph[u])
+        if (!seen[v]) dfs(v);
+};
+
+int components = 0;
+for (int u = 0; u < n; u++) {
+    if (!seen[u]) {
+        dfs(u);
+        components++;
+    }
+}`,
     complexity: 'O(V + E) time, O(V) for the visited set and the call stack.',
     pitfalls: [
       'Marking visited after the loop instead of on entry, which revisits nodes through cycles.',
@@ -185,6 +207,17 @@ def dfs(r, c):
         return 0
     grid[r][c] = 0              # sink it: the grid is the visited set
     return 1 + sum(dfs(r + dr, c + dc) for dr, dc in DIRS)`,
+    cppTemplate: `int R = grid.size(), C = grid[0].size();
+int dirs[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+function<int(int, int)> dfs = [&](int r, int c) {
+    if (r < 0 || r >= R || c < 0 || c >= C || grid[r][c] != 1)
+        return 0;
+    grid[r][c] = 0;               // sink it: the grid is the visited set
+    int area = 1;
+    for (auto& d : dirs) area += dfs(r + d[0], c + d[1]);
+    return area;
+};`,
     complexity: 'O(R * C) time. Recursion can go R * C deep on a snake-shaped island.',
     pitfalls: [
       'Mutating the input when the problem needs it back. Use a separate seen set then.',
@@ -224,6 +257,24 @@ while q:
                 q.append(v)
     steps += 1
 return -1`,
+    cppTemplate: `queue<int> q;
+q.push(start);                    // or every source at once
+unordered_set<int> seen{start};
+int steps = 0;
+while (!q.empty()) {
+    for (int sz = q.size(); sz > 0; sz--) {  // one layer
+        int u = q.front(); q.pop();
+        if (u == target) return steps;
+        for (int v : neighbours(u)) {
+            if (!seen.count(v)) {
+                seen.insert(v);   // mark on push
+                q.push(v);
+            }
+        }
+    }
+    steps++;
+}
+return -1;`,
     complexity: 'O(V + E) time and space.',
     pitfalls: [
       'Marking visited on pop, which lets the same node be queued many times.',
@@ -261,6 +312,18 @@ def has_cycle(u):            # directed
             return True
     color[u] = BLACK
     return False`,
+    cppTemplate: `enum { WHITE, GREY, BLACK };
+vector<int> color(n, WHITE);
+
+function<bool(int)> hasCycle = [&](int u) {  // directed
+    color[u] = GREY;
+    for (int v : graph[u]) {
+        if (color[v] == GREY) return true;
+        if (color[v] == WHITE && hasCycle(v)) return true;
+    }
+    color[u] = BLACK;
+    return false;
+};`,
     complexity: 'O(V + E).',
     pitfalls: [
       'Using the undirected parent check on a directed graph. A -> B and C -> B is not a cycle.',
@@ -301,6 +364,25 @@ for s in range(n):
             elif color[v] == color[u]:
                 return False
 return True`,
+    cppTemplate: `vector<int> color(n, -1);
+for (int s = 0; s < n; s++) {
+    if (color[s] != -1) continue;
+    color[s] = 0;
+    queue<int> q;
+    q.push(s);
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : graph[u]) {
+            if (color[v] == -1) {
+                color[v] = color[u] ^ 1;
+                q.push(v);
+            } else if (color[v] == color[u]) {
+                return false;
+            }
+        }
+    }
+}
+return true;`,
     complexity: 'O(V + E).',
     pitfalls: [
       'Starting only from node 0 and missing other components.',
@@ -341,6 +423,26 @@ while q:
             q.append(v)
 
 return order if len(order) == n else []   # [] means a cycle`,
+    cppTemplate: `vector<vector<int>> graph(n);
+vector<int> indeg(n, 0);
+for (auto& e : edges) {           // e[0] must come before e[1]
+    graph[e[0]].push_back(e[1]);
+    indeg[e[1]]++;
+}
+
+queue<int> q;
+for (int i = 0; i < n; i++)
+    if (indeg[i] == 0) q.push(i);
+
+vector<int> order;
+while (!q.empty()) {
+    int u = q.front(); q.pop();
+    order.push_back(u);
+    for (int v : graph[u])
+        if (--indeg[v] == 0) q.push(v);
+}
+
+return order.size() == n ? order : vector<int>{};  // {} means a cycle`,
     complexity: 'O(V + E).',
     pitfalls: [
       'Getting the edge direction backwards. [a, b] in Course Schedule means b before a.',
@@ -384,6 +486,25 @@ def union(a, b):
     parent[rb] = ra
     size[ra] += size[rb]
     return True`,
+    cppTemplate: `vector<int> parent(n), sz(n, 1);
+iota(parent.begin(), parent.end(), 0);
+
+auto find = [&](int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];  // path halving
+        x = parent[x];
+    }
+    return x;
+};
+
+auto unite = [&](int a, int b) {
+    int ra = find(a), rb = find(b);
+    if (ra == rb) return false;         // already connected
+    if (sz[ra] < sz[rb]) swap(ra, rb);
+    parent[rb] = ra;
+    sz[ra] += sz[rb];
+    return true;
+};`,
     complexity: 'Near O(1) per operation (inverse Ackermann) with both optimisations.',
     pitfalls: [
       'Comparing parent[a] == parent[b] instead of find(a) == find(b).',
@@ -426,6 +547,25 @@ while remaining > 2:
         if len(graph[nb]) == 1:
             nxt.append(nb)
     leaves = nxt`,
+    cppTemplate: `// the edge that turns a tree into a graph with a cycle
+for (auto& e : edges)
+    if (!unite(e[0], e[1])) return e;
+
+// centre of a tree: peel leaves (graph as vector<unordered_set<int>>)
+vector<int> leaves;
+for (int u = 0; u < n; u++)
+    if (graph[u].size() == 1) leaves.push_back(u);
+int remaining = n;
+while (remaining > 2) {
+    remaining -= leaves.size();
+    vector<int> nxt;
+    for (int leaf : leaves) {
+        int nb = *graph[leaf].begin();
+        graph[nb].erase(leaf);
+        if (graph[nb].size() == 1) nxt.push_back(nb);
+    }
+    leaves = nxt;
+}`,
     complexity: 'O(E * alpha(V)) for the DSU part, O(V) for leaf peeling.',
     pitfalls: [
       'Returning the first cycle edge when the problem wants the last one in input order.',
@@ -472,6 +612,32 @@ while len(seen) < n:
     for v, wv in graph[u]:
         if v not in seen:
             heappush(heap, (wv, v))`,
+    cppTemplate: `// Kruskal
+sort(edges.begin(), edges.end(),
+     [](auto& a, auto& b) { return a[2] < b[2]; });
+int total = 0, used = 0;
+for (auto& e : edges) {
+    if (unite(e[0], e[1])) {
+        total += e[2];
+        if (++used == n - 1) break;
+    }
+}
+return used == n - 1 ? total : -1;
+
+// Prim (dense graphs)
+vector<bool> seen(n, false);
+priority_queue<pair<int, int>, vector<pair<int, int>>, greater<>> pq;
+pq.push({0, 0});
+int total = 0, taken = 0;
+while (taken < n) {
+    auto [w, u] = pq.top(); pq.pop();
+    if (seen[u]) continue;
+    seen[u] = true;
+    total += w;
+    taken++;
+    for (auto [v, wv] : graph[u])
+        if (!seen[v]) pq.push({wv, v});
+}`,
     complexity: 'Kruskal O(E log E). Prim O(E log V), or O(V^2) with an array on a complete graph.',
     pitfalls: [
       'Building all V^2 edges for Kruskal when Prim over the implicit complete graph is lighter.',
@@ -509,6 +675,21 @@ while heap:
         if nd < dist[v]:
             dist[v] = nd
             heappush(heap, (nd, v))`,
+    cppTemplate: `vector<long long> dist(n, LLONG_MAX);
+dist[src] = 0;
+priority_queue<pair<long long, int>, vector<pair<long long, int>>, greater<>> pq;
+pq.push({0, src});
+while (!pq.empty()) {
+    auto [d, u] = pq.top(); pq.pop();
+    if (d > dist[u]) continue;    // stale entry
+    for (auto [v, w] : graph[u]) {
+        long long nd = d + w;
+        if (nd < dist[v]) {
+            dist[v] = nd;
+            pq.push({nd, v});
+        }
+    }
+}`,
     complexity: 'O((V + E) log V).',
     pitfalls: [
       'Negative edge weights. Dijkstra is wrong there, use Bellman-Ford.',
@@ -550,6 +731,27 @@ while dq:
                 dq.appendleft(v)
             else:
                 dq.append(v)`,
+    cppTemplate: `// state BFS: pack (r, c, k) into one struct or tuple
+using State = tuple<int, int, int>;
+queue<State> q;
+q.push({0, 0, k});
+set<State> seen{{0, 0, k}};
+int steps = 0;
+
+// 0-1 BFS
+vector<int> dist(n, INT_MAX);
+dist[src] = 0;
+deque<int> dq{src};
+while (!dq.empty()) {
+    int u = dq.front(); dq.pop_front();
+    for (auto [v, w] : neighbours(u)) {   // w is 0 or 1
+        if (dist[u] + w < dist[v]) {
+            dist[v] = dist[u] + w;
+            if (w == 0) dq.push_front(v);
+            else dq.push_back(v);
+        }
+    }
+}`,
     complexity: 'O(states + transitions). With a bitmask that is O(2^n * n).',
     pitfalls: [
       'Keeping visited by position only, which throws away states that carry more budget.',
@@ -591,6 +793,26 @@ for k in range(n):
         for j in range(n):
             if d[i][k] + d[k][j] < d[i][j]:
                 d[i][j] = d[i][k] + d[k][j]`,
+    cppTemplate: `// Bellman-Ford with at most k stops
+const int INF = 1e9;
+vector<int> dist(n, INF);
+dist[src] = 0;
+for (int i = 0; i <= k; i++) {
+    vector<int> nxt = dist;       // copy, or you use this round's updates
+    for (auto& f : flights) {
+        int u = f[0], v = f[1], w = f[2];
+        if (dist[u] != INF && dist[u] + w < nxt[v])
+            nxt[v] = dist[u] + w;
+    }
+    dist = nxt;
+}
+
+// Floyd-Warshall
+for (int k = 0; k < n; k++)
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            if (d[i][k] < INF && d[k][j] < INF && d[i][k] + d[k][j] < d[i][j])
+                d[i][j] = d[i][k] + d[k][j];`,
     complexity: 'Bellman-Ford O(k * E). Floyd-Warshall O(V^3).',
     pitfalls: [
       'Updating dist in place during a Bellman-Ford round, which lets one round use many edges.',
@@ -639,6 +861,36 @@ def walk(u):
         walk(graph[u].pop())
     path.append(u)
 walk(start); path.reverse()`,
+    cppTemplate: `// Bridges (Tarjan)
+vector<int> tin(n, -1), low(n);
+vector<vector<int>> bridges;
+int timer = 0;
+function<void(int, int)> dfs = [&](int u, int parent) {
+    tin[u] = low[u] = timer++;
+    for (int v : graph[u]) {
+        if (v == parent) continue;
+        if (tin[v] == -1) {
+            dfs(v, u);
+            low[u] = min(low[u], low[v]);
+            if (low[v] > tin[u]) bridges.push_back({u, v});
+        } else {
+            low[u] = min(low[u], tin[v]);
+        }
+    }
+};
+
+// Euler path (Hierholzer)
+vector<int> path;
+function<void(int)> walk = [&](int u) {
+    while (!graph[u].empty()) {
+        int v = graph[u].back();
+        graph[u].pop_back();
+        walk(v);
+    }
+    path.push_back(u);
+};
+walk(start);
+reverse(path.begin(), path.end());`,
     complexity: 'Both O(V + E).',
     pitfalls: [
       'Skipping the parent by node instead of by edge when there are parallel edges.',

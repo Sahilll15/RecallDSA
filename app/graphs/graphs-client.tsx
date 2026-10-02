@@ -35,6 +35,34 @@ import { ladderProblem } from '@/lib/pattern-ladder';
 import { cn, getDifficultyColor } from '@/lib/utils';
 
 const LS_KEY = 'recalldsa-graphs-v1';
+const LANG_KEY = 'recalldsa-graphs-lang';
+
+type TemplateLang = 'cpp' | 'python';
+
+const LANGS: Array<{ key: TemplateLang; label: string }> = [
+  { key: 'cpp', label: 'C++' },
+  { key: 'python', label: 'Python' },
+];
+
+function useTemplateLang() {
+  const [lang, setLang] = useState<TemplateLang>('cpp');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LANG_KEY);
+      if (saved === 'cpp' || saved === 'python') setLang(saved);
+    } catch {}
+  }, []);
+
+  const choose = useCallback((next: TemplateLang) => {
+    setLang(next);
+    try {
+      localStorage.setItem(LANG_KEY, next);
+    } catch {}
+  }, []);
+
+  return [lang, choose] as const;
+}
 const SAVE_DEBOUNCE_MS = 600;
 
 type SyncStatus = 'loading' | 'synced' | 'saving' | 'offline';
@@ -211,6 +239,8 @@ function PatternCard({
   open,
   onOpenChange,
   onToggle,
+  lang,
+  onLangChange,
 }: {
   pattern: GraphPattern;
   index: number;
@@ -219,6 +249,8 @@ function PatternCard({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onToggle: (slug: string) => void;
+  lang: TemplateLang;
+  onLangChange: (lang: TemplateLang) => void;
 }) {
   const solved = pattern.problems.filter((p) => done[p.slug]).length;
   const total = pattern.problems.length;
@@ -307,8 +339,36 @@ function PatternCard({
               </div>
             </div>
             <div className="min-w-0">
-              <p className="eyebrow mb-1.5">Template</p>
-              <CodeViewer code={pattern.template} language="python" />
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <p className="eyebrow">Template</p>
+                <div
+                  role="tablist"
+                  aria-label="Template language"
+                  className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+                >
+                  {LANGS.map((l) => (
+                    <button
+                      key={l.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={lang === l.key}
+                      onClick={() => onLangChange(l.key)}
+                      className={cn(
+                        'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                        lang === l.key
+                          ? 'bg-secondary text-foreground'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <CodeViewer
+                code={lang === 'cpp' ? pattern.cppTemplate : pattern.template}
+                language={lang}
+              />
             </div>
           </div>
           <div>
@@ -334,6 +394,7 @@ export default function GraphsPage() {
   const { done, toggle, status } = useGraphProgress();
   const [open, setOpen] = useState<Set<string>>(() => new Set(['dfs']));
   const [selected, setSelected] = useState<string | null>(null);
+  const [lang, setLang] = useTemplateLang();
 
   const states = useMemo(() => patternStates(done), [done]);
   const totalSlugs = useMemo(() => allGraphSlugs().size, []);
@@ -506,6 +567,8 @@ export default function GraphsPage() {
               index={i}
               state={states.get(p.id) ?? 'locked'}
               done={done}
+              lang={lang}
+              onLangChange={setLang}
               open={open.has(p.id)}
               onOpenChange={(isOpen) =>
                 setOpen((prev) => {
