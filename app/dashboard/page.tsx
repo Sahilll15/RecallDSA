@@ -5,6 +5,7 @@ import { MASTERY_INTERVAL_DAYS } from '@/lib/spaced-repetition';
 import { dedupeByCanonicalKey } from '@/lib/problem-identity';
 import { dedupeRevisionQueue } from '@/lib/revision-queue';
 import { buildActivityCalendar } from '@/lib/activity';
+import { rebalanceQueue } from '@/lib/daily-cap-store';
 import { PROJECTS } from '@/lib/roadmap/catalog';
 import { mergeProgress, summarizeOverview } from '@/lib/roadmap/progress';
 import { loadPracticeState } from '@/lib/practice-store';
@@ -20,6 +21,7 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
+  await rebalanceQueue(userId).catch(() => 0);
 
   const repos = await prisma.repo.findMany({
     where: { userId },

@@ -14,6 +14,7 @@ import {
   History,
   Layers,
   Loader2,
+  RotateCcw,
   Search,
   Tags,
   Target,
@@ -33,6 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatProblemTitle, formatRelativeDate, getDifficultyColor } from '@/lib/utils';
 import { patternLabel } from '@/lib/constants';
 import { MASTERY_INTERVAL_DAYS } from '@/lib/spaced-repetition';
+import { DAILY_REVIEW_CAP } from '@/lib/daily-cap';
 
 type Revision = RevisionRowData;
 
@@ -68,6 +70,16 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: 'all', label: 'All' },
 ];
 
+async function rebalance(mode: 'cap' | 'restart'): Promise<{ moved: number }> {
+  const res = await fetch('/api/revisions/rebalance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode, tzOffsetMinutes: new Date().getTimezoneOffset() }),
+  });
+  if (!res.ok) throw new Error('Could not rebalance the queue');
+  return res.json();
+}
+
 export default function RevisionPage() {
   const [allRevisions, setAllRevisions] = useState<Revision[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,9 +99,15 @@ export default function RevisionPage() {
 
   const [query, setQuery] = useState('');
 
+  const [restarting, setRestarting] = useState(false);
+  const [restarted, setRestarted] = useState<number | null>(null);
+
+  // Cap first so the count shown is a day's work, never the whole backlog.
   const loadRevisions = useCallback(
     () =>
-      fetch('/api/revisions')
+      rebalance('cap')
+        .catch(() => null)
+        .then(() => fetch('/api/revisions'))
         .then((r) => r.json())
         .then((data) => setAllRevisions(Array.isArray(data) ? data : [])),
     [],
@@ -215,6 +233,20 @@ export default function RevisionPage() {
     }
   };
 
+  const restartQueue = async () => {
+    setRestarting(true);
+    setError(null);
+    try {
+      const data = await rebalance('restart');
+      setRestarted(data.moved ?? 0);
+      await loadRevisions();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not restart the queue');
+    } finally {
+      setRestarting(false);
+    }
+  };
+
   const removeDuplicates = async () => {
     setCleaning(true);
     setError(null);
@@ -263,7 +295,7 @@ export default function RevisionPage() {
       key: 'due' as Filter,
       label: 'Due now',
       value: due.length,
-      sub: 'ready to recall',
+      sub: `at most ${DAILY_REVIEW_CAP} a day`,
       icon: Target,
       tone: 'text-destructive',
     },
@@ -356,6 +388,20 @@ export default function RevisionPage() {
               )}
               {backfilling ? 'Reading commits' : "Add this week's solves"}
             </Button>
+            <Button
+              variant="outline"
+              onClick={restartQueue}
+              disabled={restarting || due.length === 0}
+              className="w-full sm:w-auto"
+              title="Clear today and spread every due card over the coming days"
+            >
+              {restarting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              {restarting ? 'Spreading' : 'Clear today'}
+            </Button>
           </div>
         </details>
 
@@ -439,6 +485,16 @@ export default function RevisionPage() {
             <span>
               Classified <span data-numeric>{classified}</span> problem
               {classified === 1 ? '' : 's'} from their LeetCode topic tags.
+            </span>
+          </div>
+        )}
+
+        {restarted !== null && (
+          <div className="mt-6 flex items-center gap-2.5 rounded-[var(--radius)] border border-primary/30 bg-primary-soft px-4 py-3 text-sm">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+            <span>
+              Moved <span data-numeric>{restarted}</span> card{restarted === 1 ? '' : 's'} off
+              today, at most {DAILY_REVIEW_CAP} a day from tomorrow.
             </span>
           </div>
         )}

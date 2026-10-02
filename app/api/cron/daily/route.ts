@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendRevisionReminder } from "@/lib/email"
 import { dedupeRevisionQueue } from "@/lib/revision-queue"
+import { rebalanceQueue } from "@/lib/daily-cap-store"
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization")
@@ -14,6 +15,13 @@ export async function POST(request: NextRequest) {
   try {
     const today = new Date()
     today.setHours(23, 59, 59, 999)
+
+    const backlogged = await prisma.revision.findMany({
+      where: { nextDate: { lte: today } },
+      select: { userId: true },
+      distinct: ["userId"],
+    })
+    for (const { userId } of backlogged) await rebalanceQueue(userId)
 
     const dueRevisions = await prisma.revision.findMany({
       where: {
